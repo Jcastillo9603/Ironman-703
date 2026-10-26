@@ -34,16 +34,34 @@
   --good:#4CC38A; --warn:#E2A63D; --bad:#F0705F; color-scheme:dark}
 /* Athlete themes set on body: Jesus uses Colombia's yellow, blue and red; Anastasia uses Greece's blue and white */
 body{--flag:transparent}
-body[data-ath="jesus"]{--bg:#F6F4E8;--surface2:#ECE8D2;--line:#DAD4B6;--accent:#0B3F9E;--accent-ink:#FFFFFF;--lava:#CE1126;
+body[data-th="colombia"]{--bg:#F6F4E8;--surface2:#ECE8D2;--line:#DAD4B6;--accent:#0B3F9E;--accent-ink:#FFFFFF;--lava:#CE1126;
   --flag:linear-gradient(to bottom,#FCD116 0 50%,#003893 50% 75%,#CE1126 75%)}
-body[data-ath="anastasia"]{--bg:#EEF4FA;--surface2:#E0EAF4;--line:#C7D6E6;--accent:#0D5EAF;--accent-ink:#FFFFFF;--lava:#1A7FD4;
+body[data-th="greece"]{--bg:#EEF4FA;--surface2:#E0EAF4;--line:#C7D6E6;--accent:#0D5EAF;--accent-ink:#FFFFFF;--lava:#1A7FD4;
   --flag:linear-gradient(to bottom,#0D5EAF 0 20%,#FFFFFF 20% 40%,#0D5EAF 40% 60%,#FFFFFF 60% 80%,#0D5EAF 80%)}
 @media (prefers-color-scheme:dark){
-  html:not([data-theme="light"]) body[data-ath="jesus"]{--bg:#0B1630;--surface:#14223F;--surface2:#1D2F55;--line:#2B406B;--accent:#FCD116;--accent-ink:#0B1630;--lava:#F25A6B}
-  html:not([data-theme="light"]) body[data-ath="anastasia"]{--bg:#0A1A2C;--surface:#122840;--surface2:#1A3656;--line:#274A70;--accent:#6AB0F0;--accent-ink:#0A1A2C;--lava:#9CCBF7}
+  html:not([data-theme="light"]) body[data-th="colombia"]{--bg:#0B1630;--surface:#14223F;--surface2:#1D2F55;--line:#2B406B;--accent:#FCD116;--accent-ink:#0B1630;--lava:#F25A6B}
+  html:not([data-theme="light"]) body[data-th="greece"]{--bg:#0A1A2C;--surface:#122840;--surface2:#1A3656;--line:#274A70;--accent:#6AB0F0;--accent-ink:#0A1A2C;--lava:#9CCBF7}
 }
-html[data-theme="dark"] body[data-ath="jesus"]{--bg:#0B1630;--surface:#14223F;--surface2:#1D2F55;--line:#2B406B;--accent:#FCD116;--accent-ink:#0B1630;--lava:#F25A6B}
-html[data-theme="dark"] body[data-ath="anastasia"]{--bg:#0A1A2C;--surface:#122840;--surface2:#1A3656;--line:#274A70;--accent:#6AB0F0;--accent-ink:#0A1A2C;--lava:#9CCBF7}
+html[data-theme="dark"] body[data-th="colombia"]{--bg:#0B1630;--surface:#14223F;--surface2:#1D2F55;--line:#2B406B;--accent:#FCD116;--accent-ink:#0B1630;--lava:#F25A6B}
+html[data-theme="dark"] body[data-th="greece"]{--bg:#0A1A2C;--surface:#122840;--surface2:#1A3656;--line:#274A70;--accent:#6AB0F0;--accent-ink:#0A1A2C;--lava:#9CCBF7}
+/* Forced themes ignore the phone's light or dark setting */
+body[data-th="white"]{--bg:#F8F9F9;--surface:#FFFFFF;--surface2:#EEF1F2;--ink:#12232B;--muted:#5A6E75;--line:#D8DEE0;--accent:#0F6B73;--accent-ink:#FFFFFF;--lava:#C8461F;
+  --swim:#2379B5;--bike:#B97A12;--run:#C24A36;--str:#7462A8;--race:#1E8A5A;--good:#1E8A5A;--warn:#B97A12;--bad:#C0392B;--flag:linear-gradient(to bottom,#0F6B73 0 100%);color-scheme:light}
+body[data-th="dark"]{--bg:#0B0F12;--surface:#151B20;--surface2:#1E262C;--ink:#E8EEF0;--muted:#8D9BA2;--line:#2B353C;--accent:#4FB5BD;--accent-ink:#0B0F12;--lava:#F0794E;
+  --swim:#5AAEE6;--bike:#E2A63D;--run:#EE7B66;--str:#A898DD;--race:#4CC38A;--good:#4CC38A;--warn:#E2A63D;--bad:#F0705F;--flag:linear-gradient(to bottom,#4FB5BD 0 100%);color-scheme:dark}
+/* Kona lava and Tropic follow the phone's light or dark setting */
+body[data-th="lava"]{--bg:#F7F1EE;--surface2:#EFE3DD;--line:#E0CFC8;--accent:#B3321B;--accent-ink:#FFFFFF;--lava:#E8742A;--flag:linear-gradient(to bottom,#1A1210 0 40%,#B3321B 40% 75%,#E8742A 75%)}
+body[data-th="tropic"]{--bg:#EEF7F3;--surface2:#DDEEE6;--line:#C3DDD0;--accent:#0B8A6F;--accent-ink:#FFFFFF;--lava:#E0457B;--flag:linear-gradient(to bottom,#0B8A6F 0 50%,#F2C94C 50% 75%,#E0457B 75%)}
+@media (prefers-color-scheme:dark){
+  html:not([data-theme="light"]) body[data-th="lava"]{--bg:#170E0C;--surface:#241614;--surface2:#321F1B;--line:#4A2E28;--ink:#F4E6E1;--muted:#B19088;--accent:#FF7A4D;--accent-ink:#170E0C;--lava:#FFB347}
+  html:not([data-theme="light"]) body[data-th="tropic"]{--bg:#08201A;--surface:#0F2E26;--surface2:#163D33;--line:#25564A;--ink:#E3F4EE;--muted:#86B3A5;--accent:#3DDCB0;--accent-ink:#08201A;--lava:#FF7FA8}
+}
+html[data-theme="dark"] body[data-th="lava"]{--bg:#170E0C;--surface:#241614;--surface2:#321F1B;--line:#4A2E28;--ink:#F4E6E1;--muted:#B19088;--accent:#FF7A4D;--accent-ink:#170E0C;--lava:#FFB347}
+html[data-theme="dark"] body[data-th="tropic"]{--bg:#08201A;--surface:#0F2E26;--surface2:#163D33;--line:#25564A;--ink:#E3F4EE;--muted:#86B3A5;--accent:#3DDCB0;--accent-ink:#08201A;--lava:#FF7FA8}
+.thgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.th{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px;display:grid;gap:6px;font-size:13px;font-weight:600;text-align:center}
+.th i{display:block;height:26px;border-radius:6px;border:1px solid var(--line)}
+.th[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:1px}
 .top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:6px;background:var(--flag)}
 .pbtn{margin-top:4px;border:0;background:transparent;color:var(--accent);font-size:13px;font-weight:600;padding:6px 0;text-decoration:underline}
 .pbar{height:6px;border-radius:99px;background:var(--surface2);overflow:hidden;margin-top:6px}
@@ -292,6 +310,11 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
         <button class="btn full" type="submit">Save</button>
       </form>
     </div>
+    <div class="card editonly" id="themecard">
+      <h2>Color theme</h2>
+      <p class="small muted" style="margin:0">Pick the look you want. It applies when your plan is on screen.</p>
+      <div class="thgrid" id="thgrid"></div>
+    </div>
     <div class="card" id="zonescard"></div>
     <div class="card" id="calcard">
       <h2>Add the plan to your calendar</h2>
@@ -390,7 +413,7 @@ function clone(o){return JSON.parse(JSON.stringify(o))}
 var DAYN=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],DEFAULT_AV=[0,2,1,2,1,2,2];
 function defaultDoc(id){
   var a=id==="anastasia",nm={jesus:"Jesus",anastasia:"Anastasia",p3:"Athlete 3",p4:"Athlete 4",p5:"Athlete 5"}[id]||id;
-  return{profile:{name:nm,avail:DEFAULT_AV.slice(),wk:{},swim1k:a?20:60,bike40:100,run21:a?170:120,runHM:!a,run5:0,vol:100,runLvl:a?"new":"ok",swimLvl:a?"strong":"learn",ftp:0,hrmax:0,checks:{},hist:[],set:false},done:{},logs:[]};
+  return{profile:{name:nm,avail:DEFAULT_AV.slice(),wk:{},swim1k:a?20:60,bike40:100,run21:a?170:120,runHM:!a,run5:0,vol:100,runLvl:a?"new":"ok",swimLvl:a?"strong":"learn",ftp:0,hrmax:0,theme:"",checks:{},hist:[],set:false},done:{},logs:[]};
 }
 var store={};IDS.forEach(function(id){store[id]=defaultDoc(id)});
 /* Anastasia: run10 stays 0 until her 10k, so her run time is a placeholder */
@@ -1254,7 +1277,7 @@ function fillSetup(){
   FIELDS.forEach(function(f){var t=(res[f.sp]||{})[f.d];$(f.id).value=t>0?(f.ms?fmtMS(t):fmtHM(t)):""});
   $("s-runlvl").value=p.runLvl||"ok";$("s-swimlvl").value=p.swimLvl||"learn";
   $("s-ftp").value=p.ftp>0?p.ftp:"";$("s-hrmax").value=p.hrmax>0?p.hrmax:"";
-  $("s-msg").textContent="";filled[me]=true;renderSetupAvail();renderZones();
+  $("s-msg").textContent="";filled[me]=true;renderSetupAvail();renderZones();renderThemes();
 }
 function renderIam(){
   var sel=$("s-iam");if(!sel)return;
@@ -1270,7 +1293,31 @@ $("banner").addEventListener("click",function(e){
   if(b)setIam(b.dataset.iam);
   else if(k&&iAm)setMe(iAm);
 });
+var THEMES=[
+  {k:"colombia",name:"Colombia",sw:"linear-gradient(to bottom,#FCD116 0 50%,#003893 50% 75%,#CE1126 75%)"},
+  {k:"greece",name:"Greece",sw:"linear-gradient(to bottom,#0D5EAF 0 20%,#FFFFFF 20% 40%,#0D5EAF 40% 60%,#FFFFFF 60% 80%,#0D5EAF 80%)"},
+  {k:"dark",name:"Dark",sw:"linear-gradient(to bottom,#0B0F12 0 60%,#4FB5BD 60%)"},
+  {k:"white",name:"White",sw:"linear-gradient(to bottom,#FFFFFF 0 60%,#0F6B73 60%)"},
+  {k:"lava",name:"Kona lava",sw:"linear-gradient(to bottom,#1A1210 0 40%,#B3321B 40% 75%,#E8742A 75%)"},
+  {k:"tropic",name:"Tropic",sw:"linear-gradient(to bottom,#0B8A6F 0 50%,#F2C94C 50% 75%,#E0457B 75%)"},
+  {k:"classic",name:"Classic teal",sw:"linear-gradient(to bottom,#EEF2F2 0 60%,#0F6B73 60%)"}
+];
+function themeOf(id){
+  var t=store[id].profile.theme;
+  if(t&&THEMES.some(function(x){return x.k===t}))return t;
+  return id==="jesus"?"colombia":id==="anastasia"?"greece":"classic";
+}
+function applyTheme(){document.body.setAttribute("data-th",themeOf(me))}
+function renderThemes(){
+  var cur=themeOf(me);
+  $("thgrid").innerHTML=THEMES.map(function(t){return'<button type="button" class="th" data-th="'+t.k+'" aria-pressed="'+(cur===t.k)+'"><i style="background:'+t.sw+'"></i>'+t.name+"</button>"}).join("");
+}
+$("thgrid").addEventListener("click",function(e){
+  var b=e.target.closest(".th");if(!b||!editable())return;
+  store[me].profile.theme=b.dataset.th;save(me);applyTheme();renderThemes();
+});
 function render(){
+  applyTheme();
   renderBanner();
   if(tab==="plan")renderPlan();
   if(tab==="log")renderLogs();
@@ -1286,7 +1333,7 @@ function setTab(t){
   render();window.scrollTo(0,0);
 }
 function setMe(id){
-  me=id;lsSet("h703-me",id);openP=null;document.body.setAttribute("data-ath",id);
+  me=id;lsSet("h703-me",id);openP=null;applyTheme();
   Array.prototype.forEach.call($("who").children,function(b){b.setAttribute("aria-pressed",String(b.dataset.a===id))});
   weekSel=curWeek();
   if(tab==="set")fillSetup();
@@ -1454,6 +1501,12 @@ $("setform").addEventListener("submit",function(e){
 /* ---------- boot ---------- */
 Array.prototype.forEach.call($("who").children,function(b){b.textContent=store[b.dataset.a].profile.name});
 setMe(me);
+/* Coming back to the app after a minute or more puts you on your own plan, not whoever you last looked at */
+var hiddenAt=0;
+document.addEventListener("visibilitychange",function(){
+  if(document.hidden){hiddenAt=Date.now();return}
+  if(iAm&&me!==iAm&&hiddenAt&&Date.now()-hiddenAt>60000)setMe(iAm);
+});
 setStatus("This device only","warn");
 if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("./sw.js").catch(function(){})}
 $("syncform").addEventListener("submit",function(e){
