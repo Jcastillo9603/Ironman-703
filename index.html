@@ -69,6 +69,8 @@ html[data-theme="dark"] body[data-ath="anastasia"]{--bg:#0A1A2C;--surface:#12284
 .av i{font-style:normal;font-size:10px;line-height:1.1;min-height:11px;text-align:center}
 .av.sel{outline:2px solid var(--lava);outline-offset:1px}
 .avpanel{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+body[data-ro] .editonly,body[data-ro] .pbtn,body[data-ro] .avpanel,body[data-ro] #av-reset{display:none}
+body[data-ro] .sess .chk{pointer-events:none;opacity:.8}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 84px}
@@ -205,7 +207,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
   </section>
 
   <section class="tab" id="tab-log" hidden>
-    <div class="card">
+    <div class="card editonly">
       <h2>Log a workout</h2>
       <form id="logform" class="fgrid" autocomplete="off">
         <label class="f" for="l-date">Date<input id="l-date" type="date" required></label>
@@ -220,7 +222,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
         <button class="btn full" type="submit">Save workout</button>
       </form>
     </div>
-    <div class="card">
+    <div class="card editonly">
       <h2>Import from Strava</h2>
       <p class="small muted" style="margin:0">Strava does not let a page like this connect to your account directly, so import its export file. Do it again whenever you want to catch up.</p>
       <ol class="steps">
@@ -244,7 +246,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
   </section>
 
   <section class="tab" id="tab-set" hidden>
-    <div class="card">
+    <div class="card editonly">
       <h2 id="set-title">Your numbers</h2>
       <p class="small muted" style="margin:0">The plan sizes its sessions and paces from these. The finish estimate starts from them until you log hard efforts.</p>
       <form id="setform" class="fgrid" autocomplete="off">
@@ -260,7 +262,12 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
         <button class="btn full" type="submit">Save</button>
       </form>
     </div>
-    <div class="card" id="availcard">
+    <div class="card" id="iamcard">
+      <h2>Who is using this device?</h2>
+      <p class="small muted" style="margin:0">Everyone can see everyone's training. Only you can change your own plan, workouts and times. This keeps you from editing someone else's by accident.</p>
+      <label class="f" for="s-iam">This device belongs to<select id="s-iam"></select></label>
+    </div>
+    <div class="card editonly" id="availcard">
       <h2>Usual days and sports</h2>
       <p class="small muted" style="margin:0">Tap a day, then choose how many workouts, which sports you can do (no pool or no bike that day) and how much time you have. The plan moves sessions to days that fit and places the long ones first. You can change a single week in the Plan tab.</p>
       <div class="avrow" id="av-set"></div>
@@ -346,6 +353,8 @@ function defaultDoc(id){
 var store={};IDS.forEach(function(id){store[id]=defaultDoc(id)});
 /* Anastasia: run10 stays 0 until her 10k, so her run time is a placeholder */
 var sessByKey={},openP=null;
+var iAm=lsGet("h703-iam")||null;
+function editable(){return canWrite&&(!iAm||iAm===me)}
 var me="jesus",tab="plan",weekSel=1,db=null,refs={},canWrite=true,live=false,queues={},filled={};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
@@ -361,7 +370,7 @@ IDS.forEach(function(id){
   var s=lsGet("h703-"+id);
   if(s){try{store[id]=normalize(JSON.parse(s),id)}catch(e){}}
 });
-var savedMe=lsGet("h703-me");if(savedMe&&store[savedMe])me=savedMe;
+var savedMe=iAm&&store[iAm]?iAm:lsGet("h703-me");if(savedMe&&store[savedMe])me=savedMe;
 
 /* Shared sync through Supabase, used only when this page runs outside Claude */
 var sync=null,dirty={},remoteQ={},pollTimer=null;
@@ -629,8 +638,15 @@ function renderBanner(){
   var msgs=[];
   if(!canWrite)msgs.push("You can view this page but not save. Ask the owner for Contributor access.");
   var p=store[me].profile;
-  if(!p.set)msgs.push("Enter "+esc(p.name)+"'s own times in Setup so the plan fits "+(me==="jesus"?"you":"them")+". These are placeholders.");
+  if(!iAm){
+    $("banner").innerHTML='<div class="banner">Who is using this device?<div class="chips" style="margin-top:8px">'+IDS.filter(shown).map(function(id){return'<button type="button" class="sm" data-iam="'+id+'">'+esc(store[id].profile.name)+"</button>"}).join("")+"</div></div>";
+    document.body.toggleAttribute("data-ro",!editable());
+    return;
+  }
+  if(iAm!==me)msgs.push("You are viewing "+esc(p.name)+"'s training. Only "+esc(p.name)+" can change it. <button type=\"button\" class=\"sm\" data-iam-back=\"1\">Back to my plan</button>");
+  if(iAm===me&&!p.set)msgs.push("Enter "+esc(p.name)+"'s own times in Setup so the plan fits "+(me==="jesus"?"you":"them")+". These are placeholders.");
   $("banner").innerHTML=msgs.map(function(m){return'<div class="banner">'+m+"</div>"}).join("");
+  document.body.toggleAttribute("data-ro",!editable());
 }
 function coach(id){
   var cw=curWeek(),L=store[id].logs,out=[];
@@ -709,7 +725,7 @@ function avEditor(mode,arr){
   return row+panel+"</div>";
 }
 function avApply(mode,fn){
-  if(!canWrite)return;
+  if(!editable())return;
   var p=store[me].profile,arr=(mode==="week"?availFor(p,weekSel):availFor(p,0)).map(function(c){return{n:c.n,x:c.x,t:c.t}});
   fn(arr[avSel[mode]],arr);
   if(mode==="week"){if(!p.wk)p.wk={};p.wk[weekSel]=arr;save(me);renderPlan()}
@@ -815,6 +831,20 @@ function fillSetup(){
   $("s-runlvl").value=p.runLvl||"ok";$("s-swimlvl").value=p.swimLvl||"learn";
   $("s-msg").textContent="";filled[me]=true;renderSetupAvail();
 }
+function renderIam(){
+  var sel=$("s-iam");if(!sel)return;
+  sel.innerHTML='<option value="">Just looking</option>'+IDS.filter(shown).map(function(id){return'<option value="'+id+'"'+(iAm===id?" selected":"")+">"+esc(store[id].profile.name)+"</option>"}).join("");
+}
+function setIam(id){
+  iAm=id||null;lsSet("h703-iam",iAm||"");
+  if(iAm)setMe(iAm);else render();
+  renderIam();
+}
+$("banner").addEventListener("click",function(e){
+  var b=e.target.closest("[data-iam]"),k=e.target.closest("[data-iam-back]");
+  if(b)setIam(b.dataset.iam);
+  else if(k&&iAm)setMe(iAm);
+});
 function render(){
   renderBanner();
   if(tab==="plan")renderPlan();
@@ -827,7 +857,7 @@ function setTab(t){
   tab=t;
   ["plan","log","prog","set"].forEach(function(n){$("tab-"+n).hidden=n!==t});
   Array.prototype.forEach.call($("tabs").children,function(b){b.setAttribute("aria-selected",String(b.dataset.t===t))});
-  if(t==="set")fillSetup();
+  if(t==="set"){fillSetup();renderIam()}
   render();window.scrollTo(0,0);
 }
 function setMe(id){
@@ -837,6 +867,7 @@ function setMe(id){
   if(tab==="set")fillSetup();
   render();
 }
+$("s-iam").addEventListener("change",function(){setIam(this.value)});
 $("tabs").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setTab(b.dataset.t)});
 $("who").addEventListener("click",function(e){var b=e.target.closest("button");if(b)setMe(b.dataset.a)});
 $("wprev").addEventListener("click",function(){if(weekSel>1){weekSel--;renderPlan()}});
@@ -849,7 +880,7 @@ function setPct(k,pct){
 $("days").addEventListener("click",function(e){
   var t=e.target,b=t.closest(".chk"),pb=t.closest(".pbtn"),pc=t.closest(".pc"),ps=t.closest(".psave"),pcl=t.closest(".pclear");
   if(pb){openP=openP===pb.dataset.p?null:pb.dataset.p;renderPlan();return}
-  if(!canWrite)return;
+  if(!editable())return;
   var d=store[me];
   if(pc){setPct(pc.dataset.k,+pc.dataset.v);return}
   if(pcl){delete d.done[pcl.dataset.k];openP=null;save(me);renderPlan();return}
@@ -870,7 +901,7 @@ $("days").addEventListener("input",function(e){
 });
 $("availweek").addEventListener("click",function(e){
   var r=e.target.closest("#av-reset");
-  if(r){if(!canWrite)return;var p=store[me].profile;delete p.wk[weekSel];save(me);renderPlan();return}
+  if(r){if(!editable())return;var p=store[me].profile;delete p.wk[weekSel];save(me);renderPlan();return}
   avClick("week",e);
 });
 $("availweek").addEventListener("change",function(e){
@@ -894,7 +925,7 @@ $("l-dist").addEventListener("input",calcHint);$("l-time").addEventListener("inp
 $("l-date").value=ymd(new Date());
 $("logform").addEventListener("submit",function(e){
   e.preventDefault();
-  if(!canWrite){$("l-calc").textContent="You do not have permission to save here.";return}
+  if(!editable()){$("l-calc").textContent="You do not have permission to save here.";return}
   var sp=$("l-sport").value,km=parseFloat($("l-dist").value)||0,min=parseTime($("l-time").value);
   if(sp==="swim")km=km/1000;
   if(!(min>0)){$("l-calc").textContent="Enter the time as minutes (52) or h:mm (1:40).";return}
@@ -907,7 +938,7 @@ $("logform").addEventListener("submit",function(e){
 var armed=null;
 $("loglist").addEventListener("click",function(e){
   var h=e.target.closest("[data-hard]"),x=e.target.closest("[data-del]");
-  if(!canWrite)return;
+  if(!editable())return;
   var L=store[me].logs;
   if(h){var l=L.find(function(v){return v.id===h.dataset.hard});if(l){l.hard=!l.hard;save(me);renderLogs()}}
   if(x){
@@ -942,7 +973,7 @@ function sportOf(t){
 $("csv").addEventListener("change",function(){
   var f=this.files&&this.files[0],input=this,msg=$("csvmsg");
   if(!f)return;
-  if(!canWrite){msg.textContent="You do not have permission to save here.";return}
+  if(!editable()){msg.textContent="You do not have permission to save here.";return}
   var rd=new FileReader();
   rd.onerror=function(){msg.textContent="Could not read that file."};
   rd.onload=function(){
@@ -981,7 +1012,7 @@ $("setform").addEventListener("submit",function(e){
   }
   var bad=!(swim>=10&&swim<=150)||!(bike>=60&&bike<=240)||!(run>=60&&run<=300)||!(vol>=60&&vol<=130)||(runTxt&&!hm)||(run10Txt&&!(run10>=25&&run10<=150));
   if(bad){$("s-msg").textContent="Check the numbers: swim in minutes (20), ride and run as h:mm (1:40, 2:00), 10 km in minutes or h:mm (62), load between 60 and 130.";return}
-  if(!canWrite){$("s-msg").textContent="You do not have permission to save here.";return}
+  if(!editable()){$("s-msg").textContent="You do not have permission to save here.";return}
   Object.assign(store[me].profile,{name:name,swim1k:swim,bike40:bike,run21:run,runHM:hm,run10:run10,vol:vol,runLvl:$("s-runlvl").value,swimLvl:$("s-swimlvl").value,set:true});
   save(me);
   Array.prototype.forEach.call($("who").children,function(b){b.textContent=store[b.dataset.a].profile.name});
