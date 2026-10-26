@@ -248,14 +248,23 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
   <section class="tab" id="tab-set" hidden>
     <div class="card editonly">
       <h2 id="set-title">Your numbers</h2>
-      <p class="small muted" style="margin:0">The plan sizes its sessions and paces from these. The finish estimate starts from them until you log hard efforts.</p>
+      <p class="small muted" style="margin:0">The plan sizes its sessions and paces from these, and the finish estimate is projected from them until you log hard efforts.</p>
       <form id="setform" class="fgrid" autocomplete="off">
         <label class="f" for="s-name">Name<input id="s-name" type="text"></label>
         <label class="f" for="s-vol">Training load (%)<input id="s-vol" type="number" inputmode="numeric" min="60" max="130" step="5"></label>
-        <label class="f" for="s-swim">Best 1 km swim (minutes)<input id="s-swim" type="text" inputmode="decimal" placeholder="60"></label>
-        <label class="f" for="s-bike">Best 40 km ride (h:mm)<input id="s-bike" type="text" placeholder="1:40"></label>
-        <label class="f" for="s-run">Best 21.1 km run (h:mm)<input id="s-run" type="text" placeholder="2:00 or leave blank"></label>
-        <label class="f" for="s-run10">Best 10 km run (minutes or h:mm)<input id="s-run10" type="text" placeholder="e.g. 62 or 1:02"></label>
+        <div class="label full">Swim best times (mm:ss, or just minutes)</div>
+        <label class="f" for="s-sw1">1,000 m<input id="s-sw1" type="text" placeholder="20:30"></label>
+        <label class="f" for="s-sw2">2,000 m<input id="s-sw2" type="text" placeholder="42:00"></label>
+        <div class="label full">Bike best times (h:mm, or just minutes)</div>
+        <label class="f" for="s-b20">20 km<input id="s-b20" type="text" placeholder="45"></label>
+        <label class="f" for="s-b40">40 km<input id="s-b40" type="text" placeholder="1:35"></label>
+        <label class="f" for="s-b60">60 km<input id="s-b60" type="text" placeholder="2:20"></label>
+        <label class="f" for="s-b80">80 km<input id="s-b80" type="text" placeholder="3:05"></label>
+        <div class="label full">Run best times (5 and 10 km as mm:ss, half marathon as h:mm)</div>
+        <label class="f" for="s-r5">5 km<input id="s-r5" type="text" placeholder="27:30"></label>
+        <label class="f" for="s-r10">10 km<input id="s-r10" type="text" placeholder="58:00"></label>
+        <label class="f full" for="s-r21">21.1 km (half marathon)<input id="s-r21" type="text" placeholder="2:00"></label>
+        <div class="small muted full">Fill in as many as you have, at least one swim and one bike. Leave run blank if you have no result yet. More results make the prediction better.</div>
         <label class="f" for="s-runlvl">Running experience<select id="s-runlvl"><option value="new">New to running (run-walk plan)</option><option value="ok">Some running</option><option value="strong">Experienced runner</option></select></label>
         <label class="f" for="s-swimlvl">Swimming level<select id="s-swimlvl"><option value="learn">Learning, slow</option><option value="ok">Comfortable</option><option value="strong">Strong swimmer</option></select></label>
         <div class="hint full" id="s-msg"></div>
@@ -270,11 +279,12 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
     <div class="card editonly" id="availcard">
       <h2>Usual days and sports</h2>
       <p class="small muted" style="margin:0">Tap a day, then choose how many workouts, which sports you can do (no pool or no bike that day) and how much time you have. The plan moves sessions to days that fit and places the long ones first. You can change a single week in the Plan tab.</p>
-      <div class="avrow" id="av-set"></div>
+      <div id="av-set" style="display:grid;gap:10px"></div>
     </div>
     <div class="card" id="synccard" hidden>
       <h2>Share between phones</h2>
       <p class="small muted" style="margin:0">Type the same sync code on every phone or computer, at least 8 characters, and keep it private. Whoever has the code can see and change your data.</p>
+      <div class="banner" id="sync-off" hidden></div>
       <form id="syncform" class="fgrid" autocomplete="off">
         <label class="f full" for="s-code">Sync code<input id="s-code" type="text" autocapitalize="off" spellcheck="false" placeholder="for example kona-2027-pineapple"></label>
         <div class="hint full" id="sync-msg"></div>
@@ -296,7 +306,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
     <div class="card">
       <h2>How this works</h2>
       <p class="small" style="margin:0"><b>Plan.</b> 32 weeks from Mon 26 Oct 2026 to race day. Base to week 12, build to 24, race-specific to 29, taper 30 to 32. Every fourth week is lighter.</p>
-      <p class="small" style="margin:0"><b>Estimate.</b> Projects your recent hard efforts to 1.9 km, 90 km and 21.1 km, then adds ocean, hills, heat and transition time. It is a guide, not a promise.</p>
+      <p class="small" style="margin:0"><b>Estimate.</b> Fits a curve through your benchmark times, since time grows a little faster than distance, and projects it to 1.9 km, 90 km and 21.1 km. Then it adds ocean, hills, heat and transition time. It is a guide, not a promise.</p>
       <p class="small" style="margin:0"><b>Cut-offs.</b> Shown at 70 min swim, 5:30 swim plus bike, 8:30 finish. Those are the usual 70.3 limits. Check the Hawaii athlete guide for the official ones.</p>
       <p class="small" style="margin:0"><b>On your phone.</b> Open this page on your phone and use Add to Home Screen in your browser menu. Each of you needs a Contributor invite to save.</p>
     </div>
@@ -334,11 +344,11 @@ function r100(x){return Math.round(x/100)*100} function rh(x){return Math.round(
 function fmtHM(m){var t=Math.round(m);return Math.floor(t/60)+":"+pad(t%60)}
 function fmtDur(m){var t=Math.round(m);return t>=60?Math.floor(t/60)+" h "+pad(t%60):t+" min"}
 function fmtMS(m){var s=Math.round(m*60);return Math.floor(s/60)+":"+pad(s%60)}
-function parseTime(s){
+function parseTime(s,ms){
   s=String(s||"").trim().replace(",",".");if(!s)return NaN;
   if(/^\d+(\.\d+)?$/.test(s))return +s;
   var p=s.split(":").map(Number);if(p.some(isNaN))return NaN;
-  if(p.length===2)return p[0]*60+p[1];
+  if(p.length===2)return ms?p[0]+p[1]/60:p[0]*60+p[1];
   if(p.length===3)return p[0]*60+p[1]+p[2]/60;
   return NaN;
 }
@@ -406,8 +416,13 @@ function pull(){
 }
 function initSync(){
   var cfg=window.SYNC&&window.SYNC.url&&window.SYNC.key;
-  $("synccard").hidden=!cfg;
-  if(!cfg)return;
+  $("synccard").hidden=false;
+  if(!cfg){
+    $("syncform").hidden=true;
+    $("sync-off").hidden=false;
+    $("sync-off").textContent="Sharing is not switched on yet, so this phone keeps its own data. Add your Supabase URL and key to sync-config.js and publish again.";
+    return;
+  }
   $("s-code").value=lsGet("h703-code")||"";
   sync=syncCfg();
   if(sync){setStatus("Syncing","warn");pull()}
@@ -609,6 +624,64 @@ function weekRatio(id,wp){
 }
 function curWeek(){var w=weekOf(new Date());return Math.max(1,Math.min(WEEKS,w))}
 
+/* ---------- benchmark fit ---------- */
+var FIELDS=[
+  {sp:"swim",d:1000,id:"s-sw1",km:1,ms:true,label:"swim 1,000 m"},
+  {sp:"swim",d:2000,id:"s-sw2",km:2,ms:true,label:"swim 2,000 m"},
+  {sp:"bike",d:20,id:"s-b20",km:20,ms:false,label:"bike 20 km"},
+  {sp:"bike",d:40,id:"s-b40",km:40,ms:false,label:"bike 40 km"},
+  {sp:"bike",d:60,id:"s-b60",km:60,ms:false,label:"bike 60 km"},
+  {sp:"bike",d:80,id:"s-b80",km:80,ms:false,label:"bike 80 km"},
+  {sp:"run",d:5,id:"s-r5",km:5,ms:true,label:"run 5 km"},
+  {sp:"run",d:10,id:"s-r10",km:10,ms:true,label:"run 10 km"},
+  {sp:"run",d:21,id:"s-r21",km:21.0975,ms:false,label:"run 21.1 km"}
+];
+var EXP={swim:[1.0,1.15,1.06],bike:[1.0,1.12,1.07],run:[1.02,1.15,1.06]};
+var PLAUS={swim:[8,75],bike:[1.2,6],run:[3,12]};
+function getRes(p){
+  if(p.res&&p.res.swim)return p.res;
+  var r={swim:{},bike:{},run:{}};
+  if(p.swim1k>0)r.swim[1000]=p.swim1k;
+  if(p.bike40>0)r.bike[40]=p.bike40;
+  if(p.runHM&&p.run21>0)r.run[21]=p.run21;
+  if(p.run10>0)r.run[10]=p.run10;
+  return r;
+}
+function pointsOf(p,sp){
+  var r=getRes(p)[sp]||{},pts=[];
+  FIELDS.forEach(function(f){if(f.sp===sp&&r[f.d]>0)pts.push({km:f.km,t:r[f.d]})});
+  return pts;
+}
+/* Power law t = a * d^b through the entered results. The slope is shrunk toward the usual value when there are few points, then clamped. */
+function fitPredict(pts,km,sp){
+  if(!pts.length)return NaN;
+  var e=EXP[sp];
+  if(pts.length===1)return pts[0].t*Math.pow(km/pts[0].km,e[2]);
+  var xs=pts.map(function(q){return Math.log(q.km)}),ys=pts.map(function(q){return Math.log(q.t)}),n=pts.length,i,mx=0,my=0,num=0,den=0;
+  for(i=0;i<n;i++){mx+=xs[i]/n;my+=ys[i]/n}
+  for(i=0;i<n;i++){num+=(xs[i]-mx)*(ys[i]-my);den+=(xs[i]-mx)*(xs[i]-mx)}
+  var w=Math.min(.8,(n-1)*.4),b=den>0?w*(num/den)+(1-w)*e[2]:e[2];
+  b=Math.max(e[0],Math.min(e[1],b));
+  return Math.exp(my+b*(Math.log(km)-mx));
+}
+function runPredict(p){
+  var pts=pointsOf(p,"run");if(!pts.length)return NaN;
+  var far=pts.reduce(function(a,q){return Math.max(a,q.km)},0);
+  return fitPredict(pts,21.0975,"run")*(far<20?1.04:1);
+}
+function deriveProfile(P){
+  var sw=pointsOf(P,"swim"),bk=pointsOf(P,"bike"),rn=getRes(P).run||{};
+  if(sw.length)P.swim1k=fitPredict(sw,1,"swim");
+  if(bk.length)P.bike40=fitPredict(bk,40,"bike");
+  var rp=runPredict(P);
+  if(rp>0){P.run21=rp;P.runHM=!!rn[21]}else{P.run21=170;P.runHM=false}
+  P.run10=rn[10]||0;
+}
+function srcList(p,sp,unit){
+  var pts=pointsOf(p,sp);
+  return pts.length?"your "+pts.map(function(q){return sp==="swim"?Math.round(q.km*1000):Math.round(q.km*10)/10}).join(", ")+" "+unit+" result"+(pts.length>1?"s":""):null;
+}
+
 /* ---------- estimate ---------- */
 function logPace(l){return l.km>0?l.min/l.km:0}
 function estimate(id){
@@ -619,14 +692,17 @@ function estimate(id){
     list.forEach(function(l){if(l.km>=minKm){var t=fn(l);if(t<bestT){bestT=t;src="your "+fmtDate(parseYmd(l.date))+" effort"}}});
     return{t:bestT,src:src};
   }
-  var swimBase=p.swim1k*Math.pow(1.9,1.06)*1.05;
-  var swim=best(hard.filter(function(l){return l.sport==="swim"}),.4,function(l){return l.min*Math.pow(1.9/l.km,1.06)*1.05},swimBase,"your 1 km baseline");
+  var swPts=pointsOf(p,"swim"),bkPts=pointsOf(p,"bike");
+  var swimBase=(swPts.length?fitPredict(swPts,1.9,"swim"):p.swim1k*Math.pow(1.9,1.06))*1.05;
+  var swim=best(hard.filter(function(l){return l.sport==="swim"}),.4,function(l){return l.min*Math.pow(1.9/l.km,1.06)*1.05},swimBase,srcList(p,"swim","m")||"your 1 km baseline");
   var v=function(km,min){return km/(min/60)};
   var bikeFn=function(km,min){return 90/(v(km,min)*Math.pow(km/90,.07)*.93)*60};
-  var bike=best(hard.filter(function(l){return l.sport==="bike"}),15,function(l){return bikeFn(l.km,l.min)},bikeFn(40,p.bike40),"your 40 km baseline");
+  var bikeBase=bkPts.length?fitPredict(bkPts,90,"bike")/.93:bikeFn(40,p.bike40);
+  var bike=best(hard.filter(function(l){return l.sport==="bike"}),15,function(l){return bikeFn(l.km,l.min)},bikeBase,srcList(p,"bike","km")||"your 40 km baseline");
   var runFn=function(km,min){return min*Math.pow(21.0975/km,1.06)*1.10};
-  var runSrc=p.runHM?"your half marathon baseline":p.run10>0?"your 10 km baseline":"a placeholder run time (enter a 10k or half marathon time in Setup)";
-  var run=best(hard.filter(function(l){return l.sport==="run"}),5,function(l){return runFn(l.km,l.min)*(p.runHM||l.km>=10?1:1.04)},runFn(21.0975,p.run21),runSrc);
+  var rp=runPredict(p),runBase=(rp>0?rp:p.run21)*1.10;
+  var runSrc=rp>0?srcList(p,"run","km"):"a placeholder run time (add a 5 km, 10 km or half marathon result in Setup)";
+  var run=best(hard.filter(function(l){return l.sport==="run"}),5,function(l){return runFn(l.km,l.min)*(p.runHM||l.km>=10?1:1.04)},runBase,runSrc);
   var trans=8,total=swim.t+bike.t+run.t+trans;
   return{swim:swim,bike:bike,run:run,trans:trans,total:total,low:total*.96,high:total*1.05,
     cutSwim:swim.t<=70,cutBike:swim.t+bike.t+4<=330,cutAll:total<=510};
@@ -826,8 +902,9 @@ function renderProgress(){
 function fillSetup(){
   var p=store[me].profile;
   $("set-title").textContent=p.name+"'s numbers";
-  $("s-name").value=p.name;$("s-vol").value=p.vol;$("s-swim").value=p.swim1k;$("s-bike").value=fmtHM(p.bike40);
-  $("s-run").value=p.runHM?fmtHM(p.run21):"";$("s-run10").value=p.run10>0?fmtHM(p.run10):"";
+  $("s-name").value=p.name;$("s-vol").value=p.vol;
+  var res=getRes(p);
+  FIELDS.forEach(function(f){var t=(res[f.sp]||{})[f.d];$(f.id).value=t>0?(f.ms?fmtMS(t):fmtHM(t)):""});
   $("s-runlvl").value=p.runLvl||"ok";$("s-swimlvl").value=p.swimLvl||"learn";
   $("s-msg").textContent="";filled[me]=true;renderSetupAvail();
 }
@@ -1004,19 +1081,23 @@ $("csv").addEventListener("change",function(){
 
 $("setform").addEventListener("submit",function(e){
   e.preventDefault();
-  var swim=parseTime($("s-swim").value),bike=parseTime($("s-bike").value),runTxt=$("s-run").value.trim(),run10Txt=$("s-run10").value.trim();
-  var run=runTxt?parseTime(runTxt):NaN,run10=run10Txt?parseTime(run10Txt):0,hm=!isNaN(run),vol=parseFloat($("s-vol").value),name=$("s-name").value.trim()||store[me].profile.name;
-  if(!hm){
-    if(run10>0)run=run10*Math.pow(21.0975/10,1.06)*1.04;
-    else run=170;
-  }
-  var bad=!(swim>=10&&swim<=150)||!(bike>=60&&bike<=240)||!(run>=60&&run<=300)||!(vol>=60&&vol<=130)||(runTxt&&!hm)||(run10Txt&&!(run10>=25&&run10<=150));
-  if(bad){$("s-msg").textContent="Check the numbers: swim in minutes (20), ride and run as h:mm (1:40, 2:00), 10 km in minutes or h:mm (62), load between 60 and 130.";return}
+  var P=store[me].profile,vol=parseFloat($("s-vol").value),name=$("s-name").value.trim()||P.name,res={swim:{},bike:{},run:{}},err="";
+  FIELDS.forEach(function(f){
+    var txt=$(f.id).value.trim();if(!txt||err)return;
+    var t=parseTime(txt,f.ms),per=t/f.km,r=PLAUS[f.sp];
+    if(!(t>0)||per<r[0]||per>r[1]){err="Check the "+f.label+" time. Swim and run 5 and 10 km use mm:ss, bike and the half marathon use h:mm, and a single number means minutes.";return}
+    res[f.sp][f.d]=t;
+  });
+  if(!err&&!Object.keys(res.swim).length)err="Enter at least one swim time.";
+  if(!err&&!Object.keys(res.bike).length)err="Enter at least one bike time.";
+  if(!err&&!(vol>=60&&vol<=130))err="Training load must be between 60 and 130.";
+  if(err){$("s-msg").textContent=err;return}
   if(!editable()){$("s-msg").textContent="You do not have permission to save here.";return}
-  Object.assign(store[me].profile,{name:name,swim1k:swim,bike40:bike,run21:run,runHM:hm,run10:run10,vol:vol,runLvl:$("s-runlvl").value,swimLvl:$("s-swimlvl").value,set:true});
+  Object.assign(P,{name:name,res:res,vol:vol,runLvl:$("s-runlvl").value,swimLvl:$("s-swimlvl").value,set:true});
+  deriveProfile(P);
   save(me);
   Array.prototype.forEach.call($("who").children,function(b){b.textContent=store[b.dataset.a].profile.name});
-  $("s-msg").textContent="Saved. The plan now uses these numbers.";$("set-title").textContent=name+"'s numbers";render();
+  $("s-msg").textContent="Saved. The plan and estimate now use these results.";$("set-title").textContent=name+"'s numbers";render();
 });
 
 /* ---------- boot ---------- */
