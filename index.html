@@ -246,6 +246,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
         <label class="f" for="l-time">Time (minutes, or h:mm)<input id="l-time" type="text" inputmode="text" placeholder="52 or 1:40" required></label>
         <label class="f" for="l-watts">Avg power (W)<input id="l-watts" type="number" inputmode="numeric" min="0"></label>
         <label class="f" for="l-hr">Avg heart rate<input id="l-hr" type="number" inputmode="numeric" min="0"></label>
+        <label class="f full" for="l-gear" id="l-gearwrap" hidden><span id="l-gearlabel">Gear</span><select id="l-gear"></select></label>
         <label class="f full" for="l-note">Note<input id="l-note" type="text" placeholder="Felt good, windy, open water…"></label>
         <label class="chkline full" for="l-hard"><input id="l-hard" type="checkbox"> Race or hard effort (used for the finish estimate)</label>
         <div class="hint full num" id="l-calc"></div>
@@ -306,6 +307,8 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
         <label class="f" for="s-swimlvl">Swimming level<select id="s-swimlvl"><option value="learn">Learning, slow</option><option value="ok">Comfortable</option><option value="strong">Strong swimmer</option></select></label>
         <label class="f" for="s-ftp">FTP, bike power (W)<input id="s-ftp" type="number" inputmode="numeric" min="80" max="500" placeholder="optional"></label>
         <label class="f" for="s-hrmax">Max heart rate (bpm)<input id="s-hrmax" type="number" inputmode="numeric" min="140" max="220" placeholder="optional"></label>
+        <label class="f" for="s-age">Age<input id="s-age" type="number" inputmode="numeric" min="10" max="90" placeholder="optional"></label>
+        <label class="f" for="s-sex">Sex, for the heart-rate formula<select id="s-sex"><option value="">Prefer not to say</option><option value="f">Female</option><option value="m">Male</option></select></label>
         <div class="hint full" id="s-msg"></div>
         <button class="btn full" type="submit">Save</button>
       </form>
@@ -314,6 +317,28 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
       <h2>Color theme</h2>
       <p class="small muted" style="margin:0">Pick the look you want. It applies when your plan is on screen.</p>
       <div class="thgrid" id="thgrid"></div>
+    </div>
+    <div class="card editonly" id="gearcard">
+      <h2>Gear</h2>
+      <p class="small muted" style="margin:0">Add your bikes and running shoes. Distance adds up from your logged and imported workouts, and you pick the gear when you log a ride or run. Shoes and bikes show a warning as they near replacement or service.</p>
+      <label class="f" for="g-units">Show gear distance in<select id="g-units"><option value="km">Kilometres</option><option value="mi">Miles</option></select></label>
+      <div id="gearlist"></div>
+      <div class="label">Add a bike</div>
+      <div class="fgrid">
+        <label class="f" for="g-bname">Name<input id="g-bname" type="text" placeholder="Trek Domane"></label>
+        <label class="f" for="g-btype">Type<select id="g-btype"><option>Road</option><option>Time trial</option><option>Gravel</option><option>Indoor trainer</option><option>Other</option></select></label>
+        <label class="f" for="g-bkm"><span class="gu" data-cap="1">Km</span> already on it<input id="g-bkm" type="number" inputmode="decimal" min="0" placeholder="0"></label>
+        <label class="f" for="g-blim">Service every (<span class="gu">km</span>)<input id="g-blim" type="number" inputmode="numeric" min="100" placeholder="2000"></label>
+        <button class="btn full" type="button" id="g-addbike">Add bike</button>
+      </div>
+      <div class="label">Add running shoes</div>
+      <div class="fgrid">
+        <label class="f full" for="g-sname">Name<input id="g-sname" type="text" placeholder="Nike Pegasus 41"></label>
+        <label class="f" for="g-skm"><span class="gu" data-cap="1">Km</span> already on them<input id="g-skm" type="number" inputmode="decimal" min="0" placeholder="0"></label>
+        <label class="f" for="g-slim">Replace at (<span class="gu">km</span>)<input id="g-slim" type="number" inputmode="numeric" min="100" placeholder="700"></label>
+        <button class="btn full" type="button" id="g-addshoe">Add shoes</button>
+      </div>
+      <div class="hint" id="g-msg"></div>
     </div>
     <div class="card" id="zonescard"></div>
     <div class="card" id="calcard">
@@ -413,7 +438,7 @@ function clone(o){return JSON.parse(JSON.stringify(o))}
 var DAYN=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],DEFAULT_AV=[0,2,1,2,1,2,2];
 function defaultDoc(id){
   var a=id==="anastasia",nm={jesus:"Jesus",anastasia:"Anastasia",p3:"Athlete 3",p4:"Athlete 4",p5:"Athlete 5"}[id]||id;
-  return{profile:{name:nm,avail:DEFAULT_AV.slice(),wk:{},swim1k:a?20:60,bike40:100,run21:a?170:120,runHM:!a,run5:0,vol:100,runLvl:a?"new":"ok",swimLvl:a?"strong":"learn",ftp:0,hrmax:0,theme:"",checks:{},hist:[],set:false},done:{},logs:[]};
+  return{profile:{name:nm,avail:DEFAULT_AV.slice(),wk:{},swim1k:a?20:60,bike40:100,run21:a?170:120,runHM:!a,run5:0,vol:100,runLvl:a?"new":"ok",swimLvl:a?"strong":"learn",ftp:0,hrmax:0,units:"km",age:0,sex:"",gear:{bikes:[],shoes:[]},theme:"",checks:{},hist:[],set:false},done:{},logs:[]};
 }
 var store={};IDS.forEach(function(id){store[id]=defaultDoc(id)});
 /* Anastasia: run10 stays 0 until her 10k, so her run time is a placeholder */
@@ -522,9 +547,15 @@ function ftpEst(id){
   });
   return best>0?{w:Math.round(best),src:src}:null;
 }
+/* Gulati for women (206 - 0.88 x age), Tanaka for men and when unspecified (208 - 0.7 x age) */
+function hrmaxEst(p){
+  if(!(p.age>0))return 0;
+  return Math.round(p.sex==="f"?206-.88*p.age:208-.7*p.age);
+}
 function zonesOf(id){
-  var p=store[id].profile,e=ftpEst(id),ftp=p.ftp>0?p.ftp:(e?e.w:0);
-  return{ftp:ftp,ftpSrc:p.ftp>0?"typed in Setup":(e?"your hard ride on "+fmtDate(parseYmd(e.src)):""),hrmax:p.hrmax>0?p.hrmax:0};
+  var p=store[id].profile,e=ftpEst(id),ftp=p.ftp>0?p.ftp:(e?e.w:0),est=hrmaxEst(p),hm=p.hrmax>0?p.hrmax:est;
+  var src=p.hrmax>0?"typed in Setup":est>0?"estimated from age "+p.age+(p.sex==="f"?" (206 minus 0.88 times age)":" (208 minus 0.7 times age)"):"";
+  return{ftp:ftp,ftpSrc:p.ftp>0?"typed in Setup":(e?"your hard ride on "+fmtDate(parseYmd(e.src)):""),hrmax:hm,hrSrc:src};
 }
 function pwr(z,lo,hi){return Math.round(z.ftp*lo/100)+" to "+Math.round(z.ftp*hi/100)+" W"}
 function hrr(z,lo,hi){return Math.round(z.hrmax*lo/100)+" to "+Math.round(z.hrmax*hi/100)+" bpm"}
@@ -900,7 +931,8 @@ function renderPlan(){
   var tag=wp.race?"Race week":wp.phase+(wp.recovery?" · lighter week":"");
   var chips=["swim","bike","run","strength"].map(function(s){return'<span class="chip"><i style="background:'+COLORS[s]+'"></i>'+SPORTLBL[s]+" "+fmtDur(mins[s])+"</span>"}).join("");
   var r=weekRatio(me,wp),ln=levelNote(store[me].profile),zz=zonesOf(me),nh="";
-  if(!(zz.ftp>0)||!(zz.hrmax>0))nh+='<div class="small muted">Add your '+(!(zz.ftp>0)&&!(zz.hrmax>0)?"FTP and max heart rate":!(zz.ftp>0)?"FTP":"max heart rate")+" in Setup to see "+(!(zz.ftp>0)&&!(zz.hrmax>0)?"power and heart-rate targets":!(zz.ftp>0)?"power targets":"heart-rate targets")+" on each session.</div>";
+  if(!(zz.ftp>0)||!(zz.hrmax>0))nh+='<div class="small muted">Add your '+(!(zz.ftp>0)&&!(zz.hrmax>0)?"FTP and your age or max heart rate":!(zz.ftp>0)?"FTP":"age or max heart rate")+" in Setup to see "+(!(zz.ftp>0)&&!(zz.hrmax>0)?"power and heart-rate targets":!(zz.ftp>0)?"power targets":"heart-rate targets")+" on each session.</div>";
+  gearAlerts(me).forEach(function(a){nh+='<div class="small muted">'+esc(a)+"</div>"});
   if(wp.movedCount)nh+='<div class="small muted">'+wp.movedCount+" missed session"+(wp.movedCount>1?"s were":" was")+" moved to a later day this week.</div>";
   var notes=coach(me);
   $("coach").hidden=!notes.length;
@@ -963,6 +995,96 @@ $("checkin").addEventListener("click",function(e){
   var c=Object.assign({},P.checks[k]);c[b.dataset.ck]=+b.dataset.v;P.checks[k]=c;
   var ks=Object.keys(P.checks).sort();while(ks.length>45)delete P.checks[ks.shift()];
   save(me);renderCheckin();
+});
+
+/* ---------- gear ---------- */
+var GEARLIM={bikes:2000,shoes:700},MI=1.609344;
+function isMi(id){return store[id].profile.units==="mi"}
+function fmtKm(id,km){var mi=isMi(id);return Math.round(mi?km/MI:km).toLocaleString()+(mi?" mi":" km")}
+function inKm(v){return store[me].profile.units==="mi"?v*MI:v}
+function renderGearUnits(){
+  var mi=isMi(me);
+  $("g-units").value=mi?"mi":"km";
+  Array.prototype.forEach.call(document.querySelectorAll(".gu"),function(el){el.textContent=el.dataset.cap?(mi?"Miles":"Km"):(mi?"miles":"km")});
+  $("g-blim").placeholder=String(Math.round(mi?GEARLIM.bikes/MI:GEARLIM.bikes));
+  $("g-slim").placeholder=String(Math.round(mi?GEARLIM.shoes/MI:GEARLIM.shoes));
+}
+function gearList(p,kind){return(p.gear&&p.gear[kind])||[]}
+function gearLimit(g,kind){return +g.limit>0?+g.limit:GEARLIM[kind]}
+function gearKm(id,g){var t=+g.km0||0;store[id].logs.forEach(function(l){if(l.gear===g.id)t+=l.km||0});return t}
+function gearName(id,l){
+  if(!l.gear)return"";
+  var G=store[id].profile.gear||{},all=(G.bikes||[]).concat(G.shoes||[]),g=all.find(function(x){return x.id===l.gear});
+  return g?g.name:"";
+}
+function ensureGear(id,kind,name){
+  var P=store[id].profile;if(!P.gear)P.gear={bikes:[],shoes:[]};
+  var list=P.gear[kind]||(P.gear[kind]=[]),low=name.toLowerCase(),g=list.find(function(x){return x.name.toLowerCase()===low});
+  if(!g){g={id:"g"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:name,type:kind==="bikes"?"Road":"",km0:0,limit:GEARLIM[kind]};list.push(g)}
+  return g.id;
+}
+function gearState(km,lim){var r=km/lim;return r>=1?"due":r>=.85?"soon":"ok"}
+function gearAlerts(id){
+  var out=[];
+  ["bikes","shoes"].forEach(function(kind){gearList(store[id].profile,kind).forEach(function(g){
+    if(g.retired)return;
+    var km=gearKm(id,g),lim=gearLimit(g,kind),st=gearState(km,lim);
+    if(st!=="ok")out.push((kind==="bikes"?"Bike ":"Shoes ")+g.name+": "+fmtKm(id,km)+" of "+fmtKm(id,lim)+", "+(kind==="bikes"?(st==="due"?"service is due":"service soon"):(st==="due"?"time to replace them":"replace them soon"))+".");
+  })});
+  return out;
+}
+function refreshGearSelect(){
+  var sp=$("l-sport").value,kind=sp==="bike"?"bikes":sp==="run"?"shoes":null,wrap=$("l-gearwrap");
+  var list=kind?gearList(store[me].profile,kind).filter(function(g){return !g.retired}):[];
+  if(!list.length){wrap.hidden=true;return}
+  var cur=$("l-gear").value;
+  wrap.hidden=false;$("l-gearlabel").textContent=kind==="bikes"?"Bike":"Shoes";
+  $("l-gear").innerHTML='<option value="">No gear</option>'+list.map(function(g){return'<option value="'+g.id+'">'+esc(g.name)+"</option>"}).join("");
+  $("l-gear").value=list.some(function(g){return g.id===cur})?cur:list[0].id;
+}
+var gArmed=null;
+function renderGear(){
+  var P=store[me].profile,h="";
+  renderGearUnits();
+  [["bikes","Bikes"],["shoes","Running shoes"]].forEach(function(k){
+    var list=gearList(P,k[0]);
+    if(!list.length)return;
+    h+='<div class="label">'+k[1]+"</div>"+list.map(function(g){
+      var km=gearKm(me,g),lim=gearLimit(g,k[0]),st=gearState(km,lim),col=st==="due"?"var(--bad)":st==="soon"?"var(--warn)":"var(--good)";
+      var chip=g.retired?'<span class="chip">Retired</span>':st==="due"?'<span class="chip no">'+(k[0]==="bikes"?"Service due":"Replace now")+"</span>":st==="soon"?'<span class="chip">'+(k[0]==="bikes"?"Service soon":"Replace soon")+"</span>":"";
+      return'<div class="lrow"><div style="min-width:0"><div class="a">'+esc(g.name)+(g.type?' <span class="chip">'+esc(g.type)+"</span> ":" ")+chip+'</div><div class="b num">'+fmtKm(me,km)+" of "+fmtKm(me,lim)+" "+(k[0]==="bikes"?"service interval":"before replacing")+"</div>"
+        +'<div class="bar" style="margin-top:6px"><i style="width:'+Math.min(100,km/lim*100)+"%;background:"+col+'"></i></div></div>'
+        +'<div class="btns"><button type="button" class="sm" data-gret="'+g.id+'" data-kind="'+k[0]+'">'+(g.retired?"Use again":"Retire")+'</button><button type="button" class="sm" data-gdel="'+g.id+'" data-kind="'+k[0]+'">Remove</button></div></div>';
+    }).join("");
+  });
+  $("gearlist").innerHTML=h?'<div class="logs">'+h+"</div>":'<div class="muted small">No gear yet. Add a bike or shoes below.</div>';
+}
+$("g-units").addEventListener("change",function(){
+  if(!editable())return;
+  store[me].profile.units=this.value==="mi"?"mi":"km";save(me);renderGear();
+});
+$("gearcard").addEventListener("click",function(e){
+  if(!editable())return;
+  var P=store[me].profile,msg=$("g-msg");
+  if(!P.gear)P.gear={bikes:[],shoes:[]};
+  var ret=e.target.closest("[data-gret]"),del=e.target.closest("[data-gdel]");
+  if(e.target.closest("#g-addbike")){
+    var n=$("g-bname").value.trim();if(!n){msg.textContent="Give the bike a name.";return}
+    var id=ensureGear(me,"bikes",n),g=P.gear.bikes.find(function(x){return x.id===id});
+    g.type=$("g-btype").value;g.km0=inKm(parseFloat($("g-bkm").value)||0);g.limit=parseFloat($("g-blim").value)>0?inKm(parseFloat($("g-blim").value)):GEARLIM.bikes;
+    ["g-bname","g-bkm","g-blim"].forEach(function(i){$(i).value=""});msg.textContent="Bike added.";
+  }else if(e.target.closest("#g-addshoe")){
+    var sn=$("g-sname").value.trim();if(!sn){msg.textContent="Give the shoes a name.";return}
+    var sid=ensureGear(me,"shoes",sn),sg=P.gear.shoes.find(function(x){return x.id===sid});
+    sg.km0=inKm(parseFloat($("g-skm").value)||0);sg.limit=parseFloat($("g-slim").value)>0?inKm(parseFloat($("g-slim").value)):GEARLIM.shoes;
+    ["g-sname","g-skm","g-slim"].forEach(function(i){$(i).value=""});msg.textContent="Shoes added.";
+  }else if(ret){
+    var gr=gearList(P,ret.dataset.kind).find(function(x){return x.id===ret.dataset.gret});if(gr)gr.retired=!gr.retired;
+  }else if(del){
+    if(gArmed===del.dataset.gdel){P.gear[del.dataset.kind]=gearList(P,del.dataset.kind).filter(function(x){return x.id!==del.dataset.gdel});gArmed=null}
+    else{gArmed=del.dataset.gdel;del.textContent="Sure?";return}
+  }else return;
+  save(me);renderGear();refreshGearSelect();
 });
 
 /* ---------- trend charts ---------- */
@@ -1047,10 +1169,10 @@ function renderZones(){
     }).join("");
   }else h+='<div class="small muted">No FTP yet. Type one above, or log a hard ride of 20 minutes or more with average watts and mark it Hard. A 20-minute all-out effort times 0.95 is a common test.</div>';
   if(z.hrmax>0){
-    h+='<div class="small muted" style="margin-top:6px">Max heart rate '+z.hrmax+" bpm</div>"+[["Z1 Recovery",50,72],["Z2 Endurance",72,82],["Z3 Tempo",82,87],["Z4 Threshold",87,92],["Z5 Hard",92,100]].map(function(r){
+    h+='<div class="small muted" style="margin-top:6px">Max heart rate '+z.hrmax+" bpm, "+esc(z.hrSrc)+(z.hrSrc.indexOf("estimated")===0?". Age formulas can be off by 10 bpm or more, so a hard all-out test is better if you can do one safely.":"")+"</div>"+[["Z1 Recovery",50,72],["Z2 Endurance",72,82],["Z3 Tempo",82,87],["Z4 Threshold",87,92],["Z5 Hard",92,100]].map(function(r){
       return'<div class="zrow"><span>'+r[0]+'</span><b class="num">'+Math.round(z.hrmax*r[1]/100)+" to "+Math.round(z.hrmax*r[2]/100)+" bpm</b></div>";
     }).join("");
-  }else h+='<div class="small muted" style="margin-top:6px">Add your max heart rate above to see heart-rate zones. These are general guides, not a lab test.</div>';
+  }else h+='<div class="small muted" style="margin-top:6px">Add your age (and sex) or your max heart rate above to see heart-rate zones. These are general guides, not a lab test.</div>';
   $("zonescard").innerHTML=h;
 }
 
@@ -1211,11 +1333,12 @@ function parseLogMeta(l){
   return pace;
 }
 function renderLogs(){
+  refreshGearSelect();
   var logs=store[me].logs.slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
   if(!logs.length){$("loglist").innerHTML='<div class="muted">No workouts logged yet. Add one above or import from Strava.</div>';return}
   $("loglist").innerHTML=logs.slice(0,150).map(function(l){
     var dist=l.km>0?(l.sport==="swim"?Math.round(l.km*1000)+" m":l.km.toFixed(1)+" km"):"";
-    var bits=[dist,fmtDur(l.min),parseLogMeta(l),l.w?l.w+" W":"",l.hr?l.hr+" bpm":""].filter(Boolean).join(" · ");
+    var bits=[dist,fmtDur(l.min),parseLogMeta(l),l.w?l.w+" W":"",l.hr?l.hr+" bpm":"",gearName(me,l)].filter(Boolean).join(" · ");
     return'<div class="lrow"><div><div class="a">'+fmtDate(parseYmd(l.date))+' · <span style="color:'+COLORS[l.sport]+'">'+SPORTLBL[l.sport]+'</span>'+(l.src==="strava"?' <span class="chip">Strava</span>':"")+'</div><div class="b num">'+esc(bits)+(l.note?"<br>"+esc(l.note):"")+'</div></div>'
       +'<div class="btns"><button type="button" class="sm" data-hard="'+l.id+'" aria-pressed="'+!!l.hard+'" title="Counts toward the finish estimate">Hard</button><button type="button" class="sm" data-del="'+l.id+'">Delete</button></div></div>';
   }).join("")+(logs.length>150?'<div class="muted small" style="padding-top:8px">Showing the latest 150.</div>':"");
@@ -1276,8 +1399,8 @@ function fillSetup(){
   var res=getRes(p);
   FIELDS.forEach(function(f){var t=(res[f.sp]||{})[f.d];$(f.id).value=t>0?(f.ms?fmtMS(t):fmtHM(t)):""});
   $("s-runlvl").value=p.runLvl||"ok";$("s-swimlvl").value=p.swimLvl||"learn";
-  $("s-ftp").value=p.ftp>0?p.ftp:"";$("s-hrmax").value=p.hrmax>0?p.hrmax:"";
-  $("s-msg").textContent="";filled[me]=true;renderSetupAvail();renderZones();renderThemes();
+  $("s-ftp").value=p.ftp>0?p.ftp:"";$("s-hrmax").value=p.hrmax>0?p.hrmax:"";$("s-age").value=p.age>0?p.age:"";$("s-sex").value=p.sex||"";
+  $("s-msg").textContent="";filled[me]=true;renderSetupAvail();renderZones();renderThemes();renderGear();
 }
 function renderIam(){
   var sel=$("s-iam");if(!sel)return;
@@ -1392,6 +1515,7 @@ function calcHint(){
   if(!(km>0)||!(min>0)){$("l-calc").textContent="";return}
   $("l-calc").textContent=parseLogMeta({sport:sp,km:km,min:min});
 }
+$("l-sport").addEventListener("change",refreshGearSelect);
 $("l-sport").addEventListener("change",function(){$("l-distlabel").textContent=unitFor(this.value);calcHint()});
 $("l-dist").addEventListener("input",calcHint);$("l-time").addEventListener("input",calcHint);
 $("l-date").value=ymd(new Date());
@@ -1402,7 +1526,7 @@ $("logform").addEventListener("submit",function(e){
   if(sp==="swim")km=km/1000;
   if(!(min>0)){$("l-calc").textContent="Enter the time as minutes (52) or h:mm (1:40).";return}
   store[me].logs.push({id:"m"+Date.now().toString(36),date:$("l-date").value||ymd(new Date()),sport:sp,km:km,min:min,
-    w:parseFloat($("l-watts").value)||0,hr:parseFloat($("l-hr").value)||0,note:$("l-note").value.trim(),hard:$("l-hard").checked,src:"manual"});
+    w:parseFloat($("l-watts").value)||0,hr:parseFloat($("l-hr").value)||0,note:$("l-note").value.trim(),hard:$("l-hard").checked,src:"manual",gear:$("l-gearwrap").hidden?"":$("l-gear").value});
   save(me);
   ["l-dist","l-time","l-watts","l-hr","l-note"].forEach(function(i){$(i).value=""});$("l-hard").checked=false;
   $("l-calc").textContent="Saved.";renderLogs();
@@ -1451,7 +1575,7 @@ $("csv").addEventListener("change",function(){
   rd.onload=function(){
     var rows=parseCSV(String(rd.result)),h=rows[0]||[],idx=function(n){var o=[];h.forEach(function(v,i){if(v.trim()===n)o.push(i)});return o};
     var iDate=idx("Activity Date")[0],iType=idx("Activity Type")[0],iId=idx("Activity ID")[0],iName=idx("Activity Name")[0];
-    var iDist=idx("Distance"),iMove=idx("Moving Time"),iEl=idx("Elapsed Time"),iHr=idx("Average Heart Rate"),iW=idx("Average Watts");
+    var iGear=idx("Activity Gear")[0],iDist=idx("Distance"),iMove=idx("Moving Time"),iEl=idx("Elapsed Time"),iHr=idx("Average Heart Rate"),iW=idx("Average Watts");
     if(iDate==null||iType==null||!iDist.length){msg.textContent="That does not look like Strava's activities.csv.";return}
     var cutoff=new Date(2026,8,1),have={},added=0,skipped=0,L=store[me].logs;
     L.forEach(function(l){have[l.id]=1;have[l.date+"|"+l.sport+"|"+Math.round(l.min)]=1});
@@ -1464,7 +1588,8 @@ $("csv").addEventListener("change",function(){
       var km=isNaN(distCell)?0:distCell;
       var min=secs/60,date=ymd(dt),id=iId!=null&&row[iId]?"s"+row[iId]:"s"+date+sp+Math.round(min);
       if(have[id]||have[date+"|"+sp+"|"+Math.round(min)]){skipped++;continue}
-      L.push({id:id,date:date,sport:sp,km:Math.round(km*100)/100,min:Math.round(min*10)/10,w:iW[0]!=null?Math.round(parseFloat(row[iW[0]])||0):0,hr:iHr[0]!=null?Math.round(parseFloat(row[iHr[0]])||0):0,note:iName!=null?(row[iName]||"").slice(0,80):"",hard:false,src:"strava"});
+      var gname=iGear!=null?String(row[iGear]||"").trim():"",gid=gname&&(sp==="bike"||sp==="run")?ensureGear(me,sp==="bike"?"bikes":"shoes",gname):"";
+      L.push({id:id,date:date,sport:sp,km:Math.round(km*100)/100,min:Math.round(min*10)/10,w:iW[0]!=null?Math.round(parseFloat(row[iW[0]])||0):0,hr:iHr[0]!=null?Math.round(parseFloat(row[iHr[0]])||0):0,note:iName!=null?(row[iName]||"").slice(0,80):"",hard:false,src:"strava",gear:gid});
       have[id]=1;added++;
     }
     save(me);input.value="";
@@ -1486,12 +1611,13 @@ $("setform").addEventListener("submit",function(e){
   if(!err&&!Object.keys(res.swim).length)err="Enter at least one swim time.";
   if(!err&&!Object.keys(res.bike).length)err="Enter at least one bike time.";
   if(!err&&!(vol>=60&&vol<=130))err="Training load must be between 60 and 130.";
-  var ftp=parseFloat($("s-ftp").value)||0,hrmax=parseFloat($("s-hrmax").value)||0;
+  var ftp=parseFloat($("s-ftp").value)||0,hrmax=parseFloat($("s-hrmax").value)||0,age=parseFloat($("s-age").value)||0;
+  if(!err&&age&&!(age>=10&&age<=90))err="Age should be between 10 and 90, or leave it blank.";
   if(!err&&ftp&&!(ftp>=80&&ftp<=500))err="FTP should be between 80 and 500 W, or leave it blank.";
   if(!err&&hrmax&&!(hrmax>=140&&hrmax<=220))err="Max heart rate should be between 140 and 220, or leave it blank.";
   if(err){$("s-msg").textContent=err;return}
   if(!editable()){$("s-msg").textContent="You do not have permission to save here.";return}
-  Object.assign(P,{name:name,res:res,vol:vol,ftp:ftp,hrmax:hrmax,runLvl:$("s-runlvl").value,swimLvl:$("s-swimlvl").value,set:true});
+  Object.assign(P,{name:name,res:res,vol:vol,ftp:ftp,hrmax:hrmax,age:age,sex:$("s-sex").value,runLvl:$("s-runlvl").value,swimLvl:$("s-swimlvl").value,set:true});
   deriveProfile(P);
   save(me);
   Array.prototype.forEach.call($("who").children,function(b){b.textContent=store[b.dataset.a].profile.name});
@@ -1523,7 +1649,13 @@ function mergeDoc(id,inc){
   a.logs.concat(b.logs).forEach(function(l){if(l&&l.id&&!seen[l.id]){seen[l.id]=1;logs.push(l)}});
   added=logs.length-a.logs.length;
   Object.keys(b.done).forEach(function(k){var x=pctOf(a,k),y=pctOf(b,k);if(y>x)a.done[k]=y});
+  var gOld=clone(a.profile.gear||{bikes:[],shoes:[]});
   if(newer)a.profile=Object.assign({},a.profile,b.profile);
+  ["bikes","shoes"].forEach(function(k){
+    var have={},list=(gOld[k]||[]).slice();list.forEach(function(g){have[g.id]=1});
+    ((b.profile.gear||{})[k]||[]).forEach(function(g){if(!have[g.id])list.push(g)});
+    if(!a.profile.gear)a.profile.gear={bikes:[],shoes:[]};a.profile.gear[k]=list;
+  });
   a.logs=logs;return added;
 }
 function importText(text){
