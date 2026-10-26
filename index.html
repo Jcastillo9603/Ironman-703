@@ -65,6 +65,10 @@ html[data-theme="dark"] body[data-ath="anastasia"]{--bg:#0A1A2C;--surface:#12284
 .freegrid .c{text-align:center;border-radius:6px;padding:4px 0;background:var(--surface2);color:var(--muted)}
 .freegrid .c.on{color:var(--ink);font-weight:600}
 .freegrid .c.both{background:color-mix(in srgb,var(--good) 35%,var(--surface2))}
+.av{align-content:center;gap:1px}
+.av i{font-style:normal;font-size:10px;line-height:1.1;min-height:11px;text-align:center}
+.av.sel{outline:2px solid var(--lava);outline-offset:1px}
+.avpanel{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:10px}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 84px}
@@ -257,8 +261,8 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
       </form>
     </div>
     <div class="card" id="availcard">
-      <h2>Usual training days</h2>
-      <p class="small muted" style="margin:0">Tap a day to switch between off, 1 workout and 2 workouts. The plan moves sessions to the days you can train and places the long sessions first. You can change a single week in the Plan tab.</p>
+      <h2>Usual days and sports</h2>
+      <p class="small muted" style="margin:0">Tap a day, then choose how many workouts, which sports you can do (no pool or no bike that day) and how much time you have. The plan moves sessions to days that fit and places the long ones first. You can change a single week in the Plan tab.</p>
       <div class="avrow" id="av-set"></div>
     </div>
     <div class="card" id="synccard" hidden>
@@ -513,9 +517,25 @@ function weekPlan(w,p,cap){
   return{w:w,phase:ph,days:sc.days,unscheduled:sc.unsched,recovery:recovery,f:f};
 }
 var PRI={"5-0":1,"5-1":1.5,"6-0":2,"3-0":3,"2-0":4,"1-0":5,"1-1":6,"4-0":7,"3-1":8,"6-1":9};
-function availFor(p,w){var a=(p.wk&&p.wk[w])||p.avail;return Array.isArray(a)&&a.length===7?a:DEFAULT_AV}
-function schedule(sessions,cap,w){
-  var groups=[],cnt=[0,0,0,0,0,0,0],spo=[{},{},{},{},{},{},{}],lng=[0,0,0,0,0,0,0],unsched=[],i;
+var SPL=[["s","Swim"],["b","Bike"],["r","Run"],["t","Strength"]],LET={swim:"s",bike:"b",run:"r",strength:"t"};
+var FULLDAY=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],TIMES=[0,30,45,60,90,120,150,180,240,300];
+function normDay(v){
+  if(typeof v==="number")return{n:v,x:"sbrt",t:0};
+  v=v||{};return{n:Math.max(0,Math.min(2,+v.n||0)),x:typeof v.x==="string"?v.x:"sbrt",t:+v.t||0};
+}
+function availFor(p,w){var a=(p.wk&&p.wk[w])||p.avail;if(!Array.isArray(a)||a.length!==7)a=DEFAULT_AV;return a.map(normDay)}
+function whyNot(sports,gmin,cap){
+  var open=cap.filter(function(c){return c.n>0});
+  if(!open.length)return"No day is open this week.";
+  var names=Object.keys(sports).filter(function(sp){return LET[sp]});
+  var sportOk=open.filter(function(c){return names.every(function(sp){return c.x.indexOf(LET[sp])>=0})});
+  if(!sportOk.length)return"None of your open days allows "+names.join(" and ")+".";
+  var timeOk=sportOk.filter(function(c){return !c.t||c.t+5>=gmin});
+  if(!timeOk.length)return"It needs about "+Math.round(gmin)+" min and no day that allows it has that much time.";
+  return"The days that suit it are already full.";
+}
+function schedule(sessions,cap0,w){
+  var cap=cap0.map(normDay),groups=[],cnt=[0,0,0,0,0,0,0],mins=[0,0,0,0,0,0,0],spo=[{},{},{},{},{},{},{}],lng=[0,0,0,0,0,0,0],unsched=[],i;
   sessions.forEach(function(s){
     var m=s.k.split("-");s.pri=PRI[m[1]+"-"+m[2]]||9;s.long=s.pri<=2;
     if(m[1]==="5"&&m[2]==="1"){for(var j=0;j<groups.length;j++){if(groups[j].items[0].k===s.k.replace("-5-1","-5-0")){groups[j].items.push(s);return}}}
@@ -523,21 +543,25 @@ function schedule(sessions,cap,w){
   });
   groups.sort(function(a,b){return a.pri-b.pri});
   var days=[];
-  for(i=0;i<7;i++)days.push({i:i,date:addDays(START,(w-1)*7+i),label:DAYN[i],sessions:[],off:cap[i]===0});
+  for(i=0;i<7;i++)days.push({i:i,date:addDays(START,(w-1)*7+i),label:DAYN[i],sessions:[],off:cap[i].n===0});
   groups.forEach(function(g){
-    var sports={},isLong=false,sp;
-    g.items.forEach(function(s){sports[s.sport]=1;if(s.long)isLong=true});
+    var sports={},isLong=false,sp,gmin=0;
+    g.items.forEach(function(s){sports[s.sport]=1;gmin+=s.min||0;if(s.long)isLong=true});
     var order=[0,1,2,3,4,5,6].sort(function(a,b){return Math.abs(a-g.day)-Math.abs(b-g.day)||a-b}),put=-1;
     for(var o=0;o<7&&put<0;o++){
-      var d=order[o],clash=false;
-      if(cnt[d]>=cap[d])continue;
+      var d=order[o],c=cap[d],clash=false,okSp=true;
+      if(cnt[d]>=c.n)continue;
       if(isLong&&lng[d])continue;
-      for(sp in sports){if(spo[d][sp])clash=true}
-      if(clash)continue;
+      for(sp in sports){if(spo[d][sp])clash=true;if(LET[sp]&&c.x.indexOf(LET[sp])<0)okSp=false}
+      if(clash||!okSp)continue;
+      if(c.t>0&&mins[d]+gmin>c.t+5)continue;
       put=d;
     }
-    if(put<0){if(!g.opt)g.items.forEach(function(s){unsched.push(s)});return}
-    cnt[put]++;if(isLong)lng[put]=1;
+    if(put<0){
+      if(!g.opt){var why=whyNot(sports,gmin,cap);g.items.forEach(function(s){s.reason=why;unsched.push(s)})}
+      return;
+    }
+    cnt[put]++;mins[put]+=gmin;if(isLong)lng[put]=1;
     for(sp in sports)spo[put][sp]=1;
     g.items.forEach(function(s){days[put].sessions.push(s)});
   });
@@ -668,28 +692,54 @@ function renderPlan(){
   renderAvail();
 }
 function shown(id){return id==="jesus"||id==="anastasia"||store[id].profile.set}
-function availHtml(a){
-  return a.map(function(n,i){return'<button type="button" class="av" data-d="'+i+'" data-n="'+n+'" aria-label="'+DAYN[i]+": "+(n?n+(n>1?" workouts":" workout"):"off")+'">'+DAYN[i]+"<b>"+n+"</b></button>"}).join("");
+var avSel={set:0,week:0};
+function avEditor(mode,arr){
+  var sel=avSel[mode],c=arr[sel];
+  var row='<div class="avrow">'+arr.map(function(d,i){
+    var tag=d.n?((d.x==="sbrt"?"":d.x.toUpperCase().split("").join(" "))+(d.t?" "+d.t+"m":"")):"";
+    return'<button type="button" class="av'+(i===sel?" sel":"")+'" data-d="'+i+'" data-n="'+d.n+'" aria-pressed="'+(i===sel)+'" aria-label="'+FULLDAY[i]+", "+d.n+' workouts">'+DAYN[i]+"<b>"+d.n+"</b><i>"+tag+"</i></button>";
+  }).join("")+"</div>";
+  var panel='<div class="avpanel"><div class="label">'+FULLDAY[sel]+'</div><div class="chips">'
+    +["Off","1 workout","2 workouts"].map(function(t,n){return'<button type="button" class="sm" data-setn="'+n+'" aria-pressed="'+(c.n===n)+'">'+t+"</button>"}).join("")+"</div>";
+  if(c.n){
+    panel+='<div class="label">Sports you can do this day</div><div class="chips">'
+      +SPL.map(function(x){return'<button type="button" class="sm" data-sp="'+x[0]+'" aria-pressed="'+(c.x.indexOf(x[0])>=0)+'">'+x[1]+"</button>"}).join("")+"</div>"
+      +'<label class="f">Time you have<select data-t="1">'+TIMES.map(function(t){return'<option value="'+t+'"'+(c.t===t?" selected":"")+">"+(t?(t>=60?(t/60)+" h":t+" min"):"No limit")+"</option>"}).join("")+"</select></label>";
+  }
+  return row+panel+"</div>";
+}
+function avApply(mode,fn){
+  if(!canWrite)return;
+  var p=store[me].profile,arr=(mode==="week"?availFor(p,weekSel):availFor(p,0)).map(function(c){return{n:c.n,x:c.x,t:c.t}});
+  fn(arr[avSel[mode]],arr);
+  if(mode==="week"){if(!p.wk)p.wk={};p.wk[weekSel]=arr;save(me);renderPlan()}
+  else{p.avail=arr;save(me);renderSetupAvail();renderBanner()}
+}
+function avClick(mode,e){
+  var b=e.target.closest(".av"),n=e.target.closest("[data-setn]"),sp=e.target.closest("[data-sp]");
+  if(b){avSel[mode]=+b.dataset.d;if(mode==="week")renderAvail();else renderSetupAvail();return}
+  if(n)avApply(mode,function(c){c.n=+n.dataset.setn});
+  else if(sp)avApply(mode,function(c){var l=sp.dataset.sp;c.x=c.x.indexOf(l)>=0?c.x.replace(l,""):c.x+l});
 }
 function unschedHtml(wp){
   if(!wp.unscheduled||!wp.unscheduled.length)return"";
   return'<div class="day"><div class="dlabel">No<small>slot</small></div><div class="sessions">'+wp.unscheduled.map(function(s){
-    return'<div class="sess" style="--c:'+COLORS[s.sport]+'"><span class="chk" style="visibility:hidden"></span><div><div class="meta">'+SPORTLBL[s.sport]+'</div><div class="t">'+esc(s.title)+'</div><div class="d">No free day this week. Open another day or a second workout above to fit it. It does not count against you.</div></div></div>';
+    return'<div class="sess" style="--c:'+COLORS[s.sport]+'"><span class="chk" style="visibility:hidden"></span><div><div class="meta">'+SPORTLBL[s.sport]+'</div><div class="t">'+esc(s.title)+'</div><div class="d">'+esc(s.reason||"No free day this week.")+' Change your days above to fit it. It does not count against you.</div></div></div>';
   }).join("")+"</div></div>";
 }
 function renderAvail(){
   var p=store[me].profile,w=weekSel,a=availFor(p,w),over=!!(p.wk&&p.wk[w]),ids=IDS.filter(shown),cnt=[0,0,0,0,0,0,0];
-  ids.forEach(function(id){availFor(store[id].profile,w).forEach(function(n,i){if(n>0)cnt[i]++})});
+  ids.forEach(function(id){availFor(store[id].profile,w).forEach(function(c,i){if(c.n>0)cnt[i]++})});
   var grid='<div class="freegrid"><span></span>'+DAYN.map(function(d){return'<span class="h">'+d+"</span>"}).join("")+ids.map(function(id){
     var aa=availFor(store[id].profile,w);
-    return'<span class="nm">'+esc(store[id].profile.name)+"</span>"+aa.map(function(n,i){return'<span class="c'+(n?" on":"")+(n&&cnt[i]>1?" both":"")+'">'+(n||"–")+"</span>"}).join("");
+    return'<span class="nm">'+esc(store[id].profile.name)+"</span>"+aa.map(function(c,i){return'<span class="c'+(c.n?" on":"")+(c.n&&cnt[i]>1?" both":"")+'">'+(c.n||"–")+"</span>"}).join("");
   }).join("")+"</div>";
-  $("availweek").innerHTML='<h2>Days you can train</h2><div class="avrow">'+availHtml(a)+'</div>'
-    +'<div class="small muted">Tap a day to switch between off, 1 workout and 2 workouts for this week. Sessions move to the nearest free day.</div>'
+  $("availweek").innerHTML='<h2>Days and sports you can do</h2>'+avEditor("week",a)
+    +'<div class="small muted">Tap a day to edit it for this week only. Turn off a sport when there is no pool or no bike that day, and set how much time you have. Sessions move to the nearest day that fits.</div>'
     +(over?'<button type="button" class="sm" id="av-reset">Use my usual days</button>':"")
     +'<div class="label">Who is free this week</div>'+grid+(ids.length>1?'<div class="small muted">Green days are free for two or more of you.</div>':"");
 }
-function renderSetupAvail(){$("av-set").innerHTML=availHtml(availFor(store[me].profile,0))}
+function renderSetupAvail(){$("av-set").innerHTML=avEditor("set",availFor(store[me].profile,0))}
 function parseLogMeta(l){
   var pace="";
   if(l.km>0&&l.min>0){
@@ -819,18 +869,16 @@ $("days").addEventListener("input",function(e){
   if(s&&el)el.textContent=m>0?"of "+Math.round(s.min)+" min = "+Math.min(100,Math.round(m/s.min*100))+"%":"of "+Math.round(s.min)+" min";
 });
 $("availweek").addEventListener("click",function(e){
-  if(!canWrite)return;
-  var p=store[me].profile,b=e.target.closest(".av"),r=e.target.closest("#av-reset");
-  if(b){
-    var a=availFor(p,weekSel).slice(),d=+b.dataset.d;a[d]=(a[d]+1)%3;
-    if(!p.wk)p.wk={};p.wk[weekSel]=a;save(me);renderPlan();
-  }else if(r){delete p.wk[weekSel];save(me);renderPlan()}
+  var r=e.target.closest("#av-reset");
+  if(r){if(!canWrite)return;var p=store[me].profile;delete p.wk[weekSel];save(me);renderPlan();return}
+  avClick("week",e);
 });
-$("av-set").addEventListener("click",function(e){
-  if(!canWrite)return;
-  var b=e.target.closest(".av");if(!b)return;
-  var p=store[me].profile,a=availFor(p,0).slice(),d=+b.dataset.d;a[d]=(a[d]+1)%3;
-  p.avail=a;save(me);renderSetupAvail();renderBanner();
+$("availweek").addEventListener("change",function(e){
+  var t=e.target.closest("[data-t]");if(t)avApply("week",function(c){c.t=+t.value});
+});
+$("av-set").addEventListener("click",function(e){avClick("set",e)});
+$("av-set").addEventListener("change",function(e){
+  var t=e.target.closest("[data-t]");if(t)avApply("set",function(c){c.t=+t.value});
 });
 $("strip").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;weekSel=+b.dataset.w;setTab("plan")});
 
