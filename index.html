@@ -195,6 +195,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
     <button type="button" data-a="anastasia" aria-pressed="false">Anastasia</button>
     <button type="button" data-a="p3" aria-pressed="false">Athlete 3</button>
     <button type="button" data-a="p4" aria-pressed="false">Athlete 4</button>
+    <button type="button" data-a="p5" aria-pressed="false">Athlete 5</button>
   </div>
   <span class="pill" id="status">Loading</span>
 </div></div>
@@ -354,7 +355,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
 (function(){
 "use strict";
 var DAY=864e5, START=new Date(2026,9,26), RACE=new Date(2027,5,5), WEEKS=32;
-var IDS=["jesus","anastasia","p3","p4"];
+var IDS=["jesus","anastasia","p3","p4","p5"];
 var COLORS={swim:"var(--swim)",bike:"var(--bike)",run:"var(--run)",strength:"var(--str)",race:"var(--race)",other:"var(--muted)"};
 var SPORTLBL={swim:"Swim",bike:"Bike",run:"Run",strength:"Strength",race:"Race",other:"Other"};
 var $=function(id){return document.getElementById(id)};
@@ -386,7 +387,7 @@ function clone(o){return JSON.parse(JSON.stringify(o))}
 /* ---------- state ---------- */
 var DAYN=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],DEFAULT_AV=[0,2,1,2,1,2,2];
 function defaultDoc(id){
-  var a=id==="anastasia",nm={jesus:"Jesus",anastasia:"Anastasia",p3:"Athlete 3",p4:"Athlete 4"}[id]||id;
+  var a=id==="anastasia",nm={jesus:"Jesus",anastasia:"Anastasia",p3:"Athlete 3",p4:"Athlete 4",p5:"Athlete 5"}[id]||id;
   return{profile:{name:nm,avail:DEFAULT_AV.slice(),wk:{},swim1k:a?20:60,bike40:100,run21:a?170:120,runHM:!a,run5:0,vol:100,runLvl:a?"new":"ok",swimLvl:a?"strong":"learn",ftp:0,hrmax:0,checks:{},hist:[],set:false},done:{},logs:[]};
 }
 var store={};IDS.forEach(function(id){store[id]=defaultDoc(id)});
@@ -419,7 +420,9 @@ function syncCfg(){
   return null;
 }
 function rpc(fn,body){
-  return fetch(sync.url+"/rest/v1/rpc/"+fn,{method:"POST",headers:{"apikey":sync.key,"Authorization":"Bearer "+sync.key,"Content-Type":"application/json"},body:JSON.stringify(body)})
+  var hd={"apikey":sync.key,"Content-Type":"application/json"};
+  if(String(sync.key).indexOf("eyJ")===0)hd["Authorization"]="Bearer "+sync.key;
+  return fetch(sync.url+"/rest/v1/rpc/"+fn,{method:"POST",headers:hd,body:JSON.stringify(body)})
     .then(function(r){if(!r.ok)throw new Error(r.status);return r.status===204?null:r.text().then(function(t){return t?JSON.parse(t):null})});
 }
 function pushRemote(id){
