@@ -52,6 +52,19 @@ html[data-theme="dark"] body[data-ath="anastasia"]{--bg:#0A1A2C;--surface:#12284
 .partial input{width:110px;min-height:40px}
 .partial .chip{border:0;cursor:pointer}
 .chk[aria-pressed="mixed"]{background:var(--warn);border-color:var(--warn);font-size:11px}
+.top .seg{display:flex;width:100%;order:3}
+.seg button{flex:1;min-width:0;padding:6px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avrow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.av{border:1px dashed var(--line);background:var(--surface);border-radius:10px;min-height:56px;padding:4px 0;display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.av b{font-family:var(--f-disp);font-size:20px;line-height:1}
+.av[data-n="1"]{border:1px solid var(--accent);color:var(--accent);background:var(--surface2)}
+.av[data-n="2"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.freegrid{display:grid;grid-template-columns:minmax(64px,1.6fr) repeat(7,minmax(0,1fr));gap:4px;align-items:center;font-size:13px}
+.freegrid .h{font-size:11px;text-align:center;color:var(--muted);font-weight:600}
+.freegrid .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.freegrid .c{text-align:center;border-radius:6px;padding:4px 0;background:var(--surface2);color:var(--muted)}
+.freegrid .c.on{color:var(--ink);font-weight:600}
+.freegrid .c.both{background:color-mix(in srgb,var(--good) 35%,var(--surface2))}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 84px}
@@ -166,6 +179,8 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
   <div class="seg" id="who" role="group" aria-label="Athlete">
     <button type="button" data-a="jesus" aria-pressed="true">Jesus</button>
     <button type="button" data-a="anastasia" aria-pressed="false">Anastasia</button>
+    <button type="button" data-a="p3" aria-pressed="false">Athlete 3</button>
+    <button type="button" data-a="p4" aria-pressed="false">Athlete 4</button>
   </div>
   <span class="pill" id="status">Loading</span>
 </div></div>
@@ -180,6 +195,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
       <button type="button" id="wnext" aria-label="Next week">›</button>
     </div>
     <div class="card" id="wsummary"></div>
+    <div class="card" id="availweek"></div>
     <div class="card" id="coach" hidden></div>
     <div class="card" id="days"></div>
   </section>
@@ -240,6 +256,11 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
         <button class="btn full" type="submit">Save</button>
       </form>
     </div>
+    <div class="card" id="availcard">
+      <h2>Usual training days</h2>
+      <p class="small muted" style="margin:0">Tap a day to switch between off, 1 workout and 2 workouts. The plan moves sessions to the days you can train and places the long sessions first. You can change a single week in the Plan tab.</p>
+      <div class="avrow" id="av-set"></div>
+    </div>
     <div class="card" id="synccard" hidden>
       <h2>Share between phones</h2>
       <p class="small muted" style="margin:0">Type the same sync code on every phone or computer, at least 8 characters, and keep it private. Whoever has the code can see and change your data.</p>
@@ -283,7 +304,7 @@ nav.tabs button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px
 (function(){
 "use strict";
 var DAY=864e5, START=new Date(2026,9,26), RACE=new Date(2027,5,5), WEEKS=32;
-var IDS=["jesus","anastasia"];
+var IDS=["jesus","anastasia","p3","p4"];
 var COLORS={swim:"var(--swim)",bike:"var(--bike)",run:"var(--run)",strength:"var(--str)",race:"var(--race)",other:"var(--muted)"};
 var SPORTLBL={swim:"Swim",bike:"Bike",run:"Run",strength:"Strength",race:"Race",other:"Other"};
 var $=function(id){return document.getElementById(id)};
@@ -313,11 +334,12 @@ function parseTime(s){
 function clone(o){return JSON.parse(JSON.stringify(o))}
 
 /* ---------- state ---------- */
+var DAYN=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],DEFAULT_AV=[0,2,1,2,1,2,2];
 function defaultDoc(id){
-  var a=id==="anastasia";
-  return{profile:{name:a?"Anastasia":"Jesus",swim1k:a?20:60,bike40:100,run21:a?170:120,runHM:!a,run5:0,vol:100,runLvl:a?"new":"ok",swimLvl:a?"strong":"learn",set:false},done:{},logs:[]};
+  var a=id==="anastasia",nm={jesus:"Jesus",anastasia:"Anastasia",p3:"Athlete 3",p4:"Athlete 4"}[id]||id;
+  return{profile:{name:nm,avail:DEFAULT_AV.slice(),wk:{},swim1k:a?20:60,bike40:100,run21:a?170:120,runHM:!a,run5:0,vol:100,runLvl:a?"new":"ok",swimLvl:a?"strong":"learn",set:false},done:{},logs:[]};
 }
-var store={jesus:defaultDoc("jesus"),anastasia:defaultDoc("anastasia")};
+var store={};IDS.forEach(function(id){store[id]=defaultDoc(id)});
 /* Anastasia: run10 stays 0 until her 10k, so her run time is a placeholder */
 var sessByKey={},openP=null;
 var me="jesus",tab="plan",weekSel=1,db=null,refs={},canWrite=true,live=false,queues={},filled={};
@@ -407,7 +429,7 @@ function paces(p){
   return{swim:swim,easyRun:hm*1.18,hmRun:hm,v40:v40};
 }
 function swimMin(m,p){return m/100*(paces(p).swim*1.12)}
-function weekPlan(w,p){
+function weekPlan(w,p,cap){
   var f=factorOf(w)*(p.vol/100), ph=phaseOf(w), pc=paces(p), days=[], k=function(d,n){return"w"+w+"-"+d+"-"+n};
   var recovery=w<=28&&w%4===0;
   var swimGoal=pc.swim>3.5?pc.swim-(pc.swim-3.5)*Math.min(1,w/28):pc.swim;
@@ -425,7 +447,7 @@ function weekPlan(w,p){
       {k:k(4,1),sport:"bike",title:"20 min easy spin",detail:"Short and relaxed.",min:20}]);
     day(5,[{k:k(5,0),sport:"race",title:"RACE DAY · Ironman 70.3 Hawaii",detail:"1.9 km swim, 90 km bike, 21.1 km run. Start easy, fuel early, run the first 5 km slower than you want to.",min:0}]);
     day(6,[]);
-    return{w:w,phase:ph,days:days,race:true};
+    return{w:w,phase:ph,days:days,unscheduled:[],race:true};
   }
   /* Tuesday: technique swim + easy run */
   var rl=p.runLvl||"ok", sl=p.swimLvl||"learn", newRun=rl==="new";
@@ -486,7 +508,41 @@ function weekPlan(w,p){
     {k:k(6,0),sport:"run",title:(newRun?"Long run-walk ":"Long run ")+lr+" km",detail:lrTxt+" About "+fmtDur(lr*pc.easyRun)+" at "+fmtMS(pc.easyRun)+" per km.",min:lr*pc.easyRun},
     {k:k(6,1),sport:"swim",title:"Optional short swim "+sunSwim+" m",detail:"Only if you feel fresh. Easy, focus on a long stroke.",min:swimMin(sunSwim,p),opt:true}]);
   days.sort(function(a,b){return a.i-b.i});
-  return{w:w,phase:ph,days:days,recovery:recovery,f:f};
+  var tmpl=[];days.forEach(function(d){d.sessions.forEach(function(s){s.day=d.i;tmpl.push(s)})});
+  var sc=schedule(tmpl,cap||DEFAULT_AV,w);
+  return{w:w,phase:ph,days:sc.days,unscheduled:sc.unsched,recovery:recovery,f:f};
+}
+var PRI={"5-0":1,"5-1":1.5,"6-0":2,"3-0":3,"2-0":4,"1-0":5,"1-1":6,"4-0":7,"3-1":8,"6-1":9};
+function availFor(p,w){var a=(p.wk&&p.wk[w])||p.avail;return Array.isArray(a)&&a.length===7?a:DEFAULT_AV}
+function schedule(sessions,cap,w){
+  var groups=[],cnt=[0,0,0,0,0,0,0],spo=[{},{},{},{},{},{},{}],lng=[0,0,0,0,0,0,0],unsched=[],i;
+  sessions.forEach(function(s){
+    var m=s.k.split("-");s.pri=PRI[m[1]+"-"+m[2]]||9;s.long=s.pri<=2;
+    if(m[1]==="5"&&m[2]==="1"){for(var j=0;j<groups.length;j++){if(groups[j].items[0].k===s.k.replace("-5-1","-5-0")){groups[j].items.push(s);return}}}
+    groups.push({items:[s],pri:s.pri,day:s.day,opt:!!s.opt});
+  });
+  groups.sort(function(a,b){return a.pri-b.pri});
+  var days=[];
+  for(i=0;i<7;i++)days.push({i:i,date:addDays(START,(w-1)*7+i),label:DAYN[i],sessions:[],off:cap[i]===0});
+  groups.forEach(function(g){
+    var sports={},isLong=false,sp;
+    g.items.forEach(function(s){sports[s.sport]=1;if(s.long)isLong=true});
+    var order=[0,1,2,3,4,5,6].sort(function(a,b){return Math.abs(a-g.day)-Math.abs(b-g.day)||a-b}),put=-1;
+    for(var o=0;o<7&&put<0;o++){
+      var d=order[o],clash=false;
+      if(cnt[d]>=cap[d])continue;
+      if(isLong&&lng[d])continue;
+      for(sp in sports){if(spo[d][sp])clash=true}
+      if(clash)continue;
+      put=d;
+    }
+    if(put<0){if(!g.opt)g.items.forEach(function(s){unsched.push(s)});return}
+    cnt[put]++;if(isLong)lng[put]=1;
+    for(sp in sports)spo[put][sp]=1;
+    g.items.forEach(function(s){days[put].sessions.push(s)});
+  });
+  days.forEach(function(d){d.sessions.sort(function(a,b){return a.pri-b.pri})});
+  return{days:days,unsched:unsched};
 }
 function runWalk(w){
   var t=w<=2?[1,2]:w<=4?[2,2]:w<=6?[3,2]:w<=8?[4,2]:w<=12?[5,1]:w<=16?[8,1]:w<=20?[10,1]:null;
@@ -503,10 +559,11 @@ function levelNote(p){
 }
 var planCache={};
 function planFor(id){
-  var p=store[id].profile,key=id+"|"+p.swim1k+"|"+p.bike40+"|"+p.run21+"|"+p.vol+"|"+p.runLvl+"|"+p.swimLvl;
+  var p=store[id].profile,key=id+"|"+p.swim1k+"|"+p.bike40+"|"+p.run21+"|"+p.vol+"|"+p.runLvl+"|"+p.swimLvl+"|"+JSON.stringify([p.avail,p.wk]);
   if(planCache[key])return planCache[key];
-  var arr=[];for(var w=1;w<=WEEKS;w++)arr.push(weekPlan(w,p));
-  planCache={};planCache[key]=arr;return arr;
+  var arr=[];for(var w=1;w<=WEEKS;w++)arr.push(weekPlan(w,p,availFor(p,w)));
+  if(Object.keys(planCache).length>40)planCache={};
+  planCache[key]=arr;return arr;
 }
 function weekSessions(wp){var out=[];wp.days.forEach(function(d){d.sessions.forEach(function(s){out.push(s)})});return out}
 function countable(s){return !s.opt&&s.sport!=="race"}
@@ -605,10 +662,34 @@ function renderPlan(){
         }
       }
       return'<div class="sess'+(done?" done":"")+'" style="--c:'+COLORS[s.sport]+'">'+btn+'<div><div class="meta">'+esc(meta)+'</div><div class="t">'+esc(s.title)+'</div><div class="d">'+esc(s.detail)+"</div>"+extra+"</div></div>";
-    }).join(""):'<div class="rest">Rest or easy mobility</div>';
+    }).join(""):'<div class="rest">'+(dy.off?"Not training":"Rest or easy mobility")+"</div>";
     return'<div class="day'+(isToday?" today":"")+'"><div class="dlabel">'+dy.label+"<small>"+fmtDate(dy.date)+'</small></div><div class="sessions">'+inner+"</div></div>";
-  }).join("");
+  }).join("")+unschedHtml(wp);
+  renderAvail();
 }
+function shown(id){return id==="jesus"||id==="anastasia"||store[id].profile.set}
+function availHtml(a){
+  return a.map(function(n,i){return'<button type="button" class="av" data-d="'+i+'" data-n="'+n+'" aria-label="'+DAYN[i]+": "+(n?n+(n>1?" workouts":" workout"):"off")+'">'+DAYN[i]+"<b>"+n+"</b></button>"}).join("");
+}
+function unschedHtml(wp){
+  if(!wp.unscheduled||!wp.unscheduled.length)return"";
+  return'<div class="day"><div class="dlabel">No<small>slot</small></div><div class="sessions">'+wp.unscheduled.map(function(s){
+    return'<div class="sess" style="--c:'+COLORS[s.sport]+'"><span class="chk" style="visibility:hidden"></span><div><div class="meta">'+SPORTLBL[s.sport]+'</div><div class="t">'+esc(s.title)+'</div><div class="d">No free day this week. Open another day or a second workout above to fit it. It does not count against you.</div></div></div>';
+  }).join("")+"</div></div>";
+}
+function renderAvail(){
+  var p=store[me].profile,w=weekSel,a=availFor(p,w),over=!!(p.wk&&p.wk[w]),ids=IDS.filter(shown),cnt=[0,0,0,0,0,0,0];
+  ids.forEach(function(id){availFor(store[id].profile,w).forEach(function(n,i){if(n>0)cnt[i]++})});
+  var grid='<div class="freegrid"><span></span>'+DAYN.map(function(d){return'<span class="h">'+d+"</span>"}).join("")+ids.map(function(id){
+    var aa=availFor(store[id].profile,w);
+    return'<span class="nm">'+esc(store[id].profile.name)+"</span>"+aa.map(function(n,i){return'<span class="c'+(n?" on":"")+(n&&cnt[i]>1?" both":"")+'">'+(n||"–")+"</span>"}).join("");
+  }).join("")+"</div>";
+  $("availweek").innerHTML='<h2>Days you can train</h2><div class="avrow">'+availHtml(a)+'</div>'
+    +'<div class="small muted">Tap a day to switch between off, 1 workout and 2 workouts for this week. Sessions move to the nearest free day.</div>'
+    +(over?'<button type="button" class="sm" id="av-reset">Use my usual days</button>':"")
+    +'<div class="label">Who is free this week</div>'+grid+(ids.length>1?'<div class="small muted">Green days are free for two or more of you.</div>':"");
+}
+function renderSetupAvail(){$("av-set").innerHTML=availHtml(availFor(store[me].profile,0))}
 function parseLogMeta(l){
   var pace="";
   if(l.km>0&&l.min>0){
@@ -651,9 +732,9 @@ function renderProgress(){
     +'<div class="split" style="--c:var(--muted)"><b class="num">0:08</b><span>Transitions</span></div></div>'
     +'<div class="cut"><span class="chip '+cl(e.cutSwim)+'">'+(e.cutSwim?"✓":"✗")+' Swim under 1:10</span><span class="chip '+cl(e.cutBike)+'">'+(e.cutBike?"✓":"✗")+' Swim + bike under 5:30</span><span class="chip '+cl(e.cutAll)+'">'+(e.cutAll?"✓":"✗")+' Finish under 8:30</span></div>'
     +'<div class="small muted">Based on '+esc(e.swim.src)+" (swim), "+esc(e.bike.src)+" (bike), "+esc(e.run.src)+" (run). Mark recent races and hard efforts as Hard in the Log tab to sharpen it. Cut-offs are the usual 70.3 limits, so confirm them in the athlete guide.</div>";
-  var tg=IDS.map(function(id){var t=sessionsToDate(id),sh=estimate(id);
+  var tg=IDS.filter(shown).map(function(id){var t=sessionsToDate(id),sh=estimate(id);
     return bar(esc(store[id].profile.name)+" · sessions done",t.all?t.allDone/t.all:0,fmtN(t.allDone)+" of "+t.all+" · est. "+fmtHM(sh.total),id===me?"var(--accent)":"var(--muted)")}).join("");
-  $("together").innerHTML='<h2>Jesus and Anastasia</h2>'+tg;
+  $("together").innerHTML='<h2>Team progress</h2>'+tg;
   var L=store[me].logs,mx=function(sp){return L.filter(function(l){return l.sport===sp}).reduce(function(a,l){return Math.max(a,l.km||0)},0)};
   var p0=paces(store[me].profile).swim,bp=L.filter(function(l){return l.sport==="swim"&&l.km>=.4&&l.min>0}).reduce(function(a,l){return Math.min(a,l.min/(l.km*10))},p0);
   var sw=mx("swim"),bk=mx("bike"),rn=mx("run");
@@ -682,7 +763,7 @@ function fillSetup(){
   $("s-name").value=p.name;$("s-vol").value=p.vol;$("s-swim").value=p.swim1k;$("s-bike").value=fmtHM(p.bike40);
   $("s-run").value=p.runHM?fmtHM(p.run21):"";$("s-run10").value=p.run10>0?fmtHM(p.run10):"";
   $("s-runlvl").value=p.runLvl||"ok";$("s-swimlvl").value=p.swimLvl||"learn";
-  $("s-msg").textContent="";filled[me]=true;
+  $("s-msg").textContent="";filled[me]=true;renderSetupAvail();
 }
 function render(){
   renderBanner();
@@ -736,6 +817,20 @@ $("days").addEventListener("input",function(e){
   var i=e.target.closest(".pm");if(!i)return;
   var s=sessByKey[i.dataset.k],m=parseTime(i.value),el=document.querySelector('[data-pt="'+i.dataset.k+'"]');
   if(s&&el)el.textContent=m>0?"of "+Math.round(s.min)+" min = "+Math.min(100,Math.round(m/s.min*100))+"%":"of "+Math.round(s.min)+" min";
+});
+$("availweek").addEventListener("click",function(e){
+  if(!canWrite)return;
+  var p=store[me].profile,b=e.target.closest(".av"),r=e.target.closest("#av-reset");
+  if(b){
+    var a=availFor(p,weekSel).slice(),d=+b.dataset.d;a[d]=(a[d]+1)%3;
+    if(!p.wk)p.wk={};p.wk[weekSel]=a;save(me);renderPlan();
+  }else if(r){delete p.wk[weekSel];save(me);renderPlan()}
+});
+$("av-set").addEventListener("click",function(e){
+  if(!canWrite)return;
+  var b=e.target.closest(".av");if(!b)return;
+  var p=store[me].profile,a=availFor(p,0).slice(),d=+b.dataset.d;a[d]=(a[d]+1)%3;
+  p.avail=a;save(me);renderSetupAvail();renderBanner();
 });
 $("strip").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;weekSel=+b.dataset.w;setTab("plan")});
 
@@ -906,7 +1001,7 @@ if(window.claude&&window.claude.use){
     db=r[0];var user=r[1];
     if(user&&typeof user.can==="function"){try{if(user.can("data.write")===false)canWrite=false}catch(e){}}
     if(!db){initSync();return}
-    live=true;setStatus(canWrite?"Shared · live":"View only","live");
+    live=true;$("backupcard").hidden=true;setStatus(canWrite?"Shared · live":"View only","live");
     IDS.forEach(function(id){
       refs[id]=db.doc("tri/"+id);
       refs[id].onSnapshot(function(snap){
