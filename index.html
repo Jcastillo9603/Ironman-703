@@ -416,7 +416,7 @@ var savedMe=iAm&&store[iAm]?iAm:lsGet("h703-me");if(savedMe&&store[savedMe])me=s
 var sync=null,dirty={},remoteQ={},pollTimer=null;
 function syncCfg(){
   var c=window.SYNC||{},code=lsGet("h703-code");
-  if(c.url&&c.key&&code&&code.length>=8)return{url:String(c.url).replace(/\/$/,""),key:c.key,code:code};
+  if(c.url&&c.key&&code&&code.length>=8)return{url:String(c.url).replace(/\/+$/,"").replace(/\/rest\/v1$/,""),key:c.key,code:code};
   return null;
 }
 function rpc(fn,body){
@@ -837,7 +837,7 @@ function renderBanner(){
   if(!canWrite)msgs.push("You can view this page but not save. Ask the owner for Contributor access.");
   var p=store[me].profile;
   if(!iAm){
-    $("banner").innerHTML='<div class="banner">Who is using this device?<div class="chips" style="margin-top:8px">'+IDS.filter(shown).map(function(id){return'<button type="button" class="sm" data-iam="'+id+'">'+esc(store[id].profile.name)+"</button>"}).join("")+"</div></div>";
+    $("banner").innerHTML='<div class="banner">Who is using this device?<div class="chips" style="margin-top:8px">'+IDS.map(function(id){return'<button type="button" class="sm" data-iam="'+id+'">'+esc(store[id].profile.name)+"</button>"}).join("")+"</div></div>";
     document.body.toggleAttribute("data-ro",!editable());
     return;
   }
@@ -1256,7 +1256,7 @@ function fillSetup(){
 }
 function renderIam(){
   var sel=$("s-iam");if(!sel)return;
-  sel.innerHTML='<option value="">Just looking</option>'+IDS.filter(shown).map(function(id){return'<option value="'+id+'"'+(iAm===id?" selected":"")+">"+esc(store[id].profile.name)+"</option>"}).join("");
+  sel.innerHTML='<option value="">Just looking</option>'+IDS.map(function(id){return'<option value="'+id+'"'+(iAm===id?" selected":"")+">"+esc(store[id].profile.name)+"</option>"}).join("");
 }
 function setIam(id){
   iAm=id||null;lsSet("h703-iam",iAm||"");
